@@ -4,6 +4,4 @@ An implementation of k-means clustering using CIELAB colors. Written in C++ and 
 
 ![Palette example](https://i.imgur.com/Ahk7vyE.jpg)
 
-Output palettes can be sorted by cluster weight, distance from red, distance from green, or distance from blue.
-
-Original photo by Francesco Ungaro from Pexels
+Original photo by Francesco Ungaro from Pexels.
