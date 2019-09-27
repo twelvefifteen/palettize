@@ -18,7 +18,7 @@ SeedSeries(u32 Seed)
 inline u32
 RandomU32(random_series* Series)
 {
-    // NOTE(gus): 32-bit xorshift implementation
+    // NOTE: 32-bit xorshift implementation
     u32 Result = Series->Seed;
 	Result ^= (Result << 13);
 	Result ^= (Result >> 17);

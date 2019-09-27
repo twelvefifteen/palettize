@@ -106,7 +106,7 @@ AllocateClusterGroup(bitmap Bitmap, u32 Seed, int ClusterCount)
     ClusterGroup->ClusterCount = ClusterCount;
     ClusterGroup->Clusters = (cluster*)malloc(sizeof(cluster)*ClusterCount); 
     ClusterGroup->TotalObservationCount = 0;
-    // @Features(gus): Support k-means++ as another cluster seeding option
+    // @Features: Support k-means++ as another cluster seeding option
     for(int ClusterIndex = 0;
         ClusterIndex < ClusterGroup->ClusterCount;
         ClusterIndex++)
@@ -145,7 +145,7 @@ AddObservation(cluster_group* ClusterGroup, v3 C)
     
     ClusterGroup->TotalObservationCount++;
     
-    // (gus): Returning the index of the closest cluster for our early out
+    // Returning the index of the closest cluster for our early out
     // condition in the loop where this function's called
     u32 Result = (u32)(ClosestCluster - ClusterGroup->Clusters);
     Assert(Result < (u32)ClusterGroup->ClusterCount);
@@ -184,7 +184,7 @@ ExportBMP(bitmap Bitmap, char* Path)
     FILE* File = fopen(Path, "wb");
     if(File)
     {
-        // (gus): Swizzling the red and blue components of each texel because
+        // Swizzling the red and blue components of each texel because
         // that's how BMPs expect channels to be ordered
         u8* Row = (u8*)Bitmap.Address;
         for(int Y = 0;
@@ -213,7 +213,7 @@ ExportBMP(bitmap Bitmap, char* Path)
         BitmapHeader.Type = 0x4D42;
         BitmapHeader.FileSize = (sizeof(BitmapHeader) + BitmapSize);
         BitmapHeader.OffBits = sizeof(BitmapHeader);
-        BitmapHeader.Size = 40; // (gus): sizeof(BITMAPINFOHEADER)
+        BitmapHeader.Size = 40; // sizeof(BITMAPINFOHEADER)
         BitmapHeader.Width = Bitmap.Width;
         BitmapHeader.Height = Bitmap.Height;
         BitmapHeader.Planes = 1;
@@ -269,7 +269,7 @@ main(int ArgCount, char** Args)
             f32 DimFactor = (100.0f / (f32)MaxDim);
             int ResizedWidth = RoundToInt(Source.Width*DimFactor);
             int ResizedHeight = RoundToInt(Source.Height*DimFactor);
-            // @Refactor(gus): Since this program isn't sharing its code,
+            // @Refactor: Since this program isn't sharing its code,
             // perhaps Resize() can simply return an allocated bitmap instead
             // of accepting one
             bitmap Resized = MakeEmptyBitmap(ResizedWidth, ResizedHeight);
@@ -429,7 +429,7 @@ main(int ArgCount, char** Args)
             
             u8* ScanLine = (u8*)malloc(sizeof(u32)*PaletteWidth);
             
-            // @Features(gus): Sort colors as best you can before generating
+            // @Features: Sort colors as best you can before generating
             // the scan line?
             u32* Row = (u32*)ScanLine;
             for(int ClusterIndex = 0;
@@ -447,7 +447,7 @@ main(int ArgCount, char** Args)
 #endif
                 while(ClusterPixelWidth--)
                 {
-                    // @Robustness(gus): A counter of how many pixels we've
+                    // @Robustness: A counter of how many pixels we've
                     // written out (and breaking out if we've gone too far)
                     // could prevent heap corruption bugs
                     *Row++ = CentroidColor;

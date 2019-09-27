@@ -35,7 +35,7 @@ V3i(int X, int Y, int Z)
 }
 
 // 
-// NOTE(gus): Scalar operations
+// NOTE: Scalar operations
 // 
 
 inline f32
@@ -145,7 +145,7 @@ SquareRoot(f32 A)
 }
 
 // 
-// NOTE(gus): v3 operations
+// NOTE: v3 operations
 // 
 
 inline v3
@@ -257,7 +257,7 @@ UnpackRGBA(u32 C)
 }
 
 // 
-// NOTE(gus): m3x3 operations
+// NOTE: m3x3 operations
 // 
 
 inline v3
@@ -272,10 +272,10 @@ operator*(m3x3 A, v3 V)
 }
 
 // 
-// NOTE(gus): Color space operations
+// NOTE: Color space operations
 // 
 
-// (gus): White point coords for Illuminant D65
+// White point coords for Illuminant D65
 #define Xn 0.950470f
 #define Yn 1.0f
 #define Zn 1.088830f
