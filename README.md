@@ -1,6 +1,6 @@
 # palettize
 
-An implementation of k-means clustering using CIELAB colors. Written in C++ and tested with MSVC++ 14.21.
+Palette generator using k-means clustering with CIELAB colors. Written in C++ and tested with MSVC++ 14.21.
 
 ![Palette example](https://i.imgur.com/Ahk7vyE.jpg)
 
