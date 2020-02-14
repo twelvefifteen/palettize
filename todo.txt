@@ -1,0 +1,3 @@
+Automatically determine k, see: making.lyst.com/2014/02/22/color-detection under "Color clustering" & alanzucconi.com/2015/05/24/how-to-find-the-main-colours-in-an-image under "Step 3"
+Superpixel segmentation
+Support inertia to determine the best result from multiple runs, see: https://scikit-learn.org/stable/modules/generated/sklearn.cluster.KMeans.html
