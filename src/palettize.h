@@ -65,6 +65,8 @@ struct cluster_group
     int ClusterCount;
     cluster *Clusters;
     
+    // @TODO: Remove this, since it can be computed from the
+    // TotalObservationCount maintained in each cluster
     int TotalObservationCount;
 };
 

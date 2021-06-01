@@ -82,11 +82,7 @@ SeedCluster(cluster_group *ClusterGroup, cluster *Cluster)
     u32 RandomSampleY =
         RandomU32Between(&ClusterGroup->Entropy, 0, (u32)(ClusterGroup->Bitmap.Height - 1));
     u32 RandomSample = *(u32 *)GetBitmapPtr(ClusterGroup->Bitmap, RandomSampleX, RandomSampleY);
-#if PALETTIZE_CIELAB
     v3 RandomSampleV3 = UnpackRGBAToCIELAB(RandomSample);
-#else
-    v3 RandomSampleV3 = UnpackRGBA(RandomSample);
-#endif
     Cluster->Centroid = RandomSampleV3;
 }
 
@@ -301,11 +297,7 @@ main(int ArgCount, char **Args)
                     {
                         u32 Texel = *TexelPtr;
                         
-#if PALETTIZE_CIELAB
                         v3 TexelV3 = UnpackRGBAToCIELAB(Texel);
-#else
-                        v3 TexelV3 = UnpackRGBA(Texel);
-#endif
                         u32 ClusterIndex = AddObservation(ClusterGroup,
                                                           TexelV3);
                         u32 *PrevClusterIndexPtr =
@@ -336,7 +328,6 @@ main(int ArgCount, char **Args)
             v3 FocalColor = V3i(0, 0, 0);
             switch(SortType)
             {
-#if PALETTIZE_CIELAB
                 case SortType_Red:
                 {
                     FocalColor =
@@ -354,22 +345,6 @@ main(int ArgCount, char **Args)
                     FocalColor =
                         V3(32.302586667249486, 79.19666178930935, -107.86368104495168);
                 } break;
-#else
-                case SortType_Red:
-                {
-                    FocalColor = V3i(1, 0, 0);
-                } break;
-                
-                case SortType_Green:
-                {
-                    FocalColor = V3i(0, 1, 0);
-                } break;
-                
-                case SortType_Blue:
-                {
-                    FocalColor = V3i(0, 0, 1);
-                } break;
-#endif
             }
             for(int Outer = 0;
                 Outer < ClusterGroup->ClusterCount;
@@ -438,11 +413,8 @@ main(int ArgCount, char **Args)
                 f32 Weight = SafeRatio0((f32)Cluster->TotalObservationCount,
                                         (f32)ClusterGroup->TotalObservationCount);
                 int ClusterPixelWidth = RoundToInt(Weight*PaletteWidth);
-#if PALETTIZE_CIELAB
                 u32 CentroidColor = PackCIELABToRGBA(Cluster->Centroid);
-#else
-                u32 CentroidColor = PackRGBA(Cluster->Centroid);
-#endif
+
                 while(ClusterPixelWidth--)
                 {
                     // @Robustness: Add a counter of how many pixels we've
