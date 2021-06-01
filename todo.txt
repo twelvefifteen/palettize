@@ -1,3 +1,20 @@
-Automatically determine k, see: making.lyst.com/2014/02/22/color-detection under "Color clustering" & alanzucconi.com/2015/05/24/how-to-find-the-main-colours-in-an-image under "Step 3"
-Superpixel segmentation
-Support inertia to determine the best result from multiple runs, see: https://scikit-learn.org/stable/modules/generated/sklearn.cluster.KMeans.html
+Algorithm
+	Automatically determine k
+		alanzucconi.com/2015/05/24/how-to-find-the-main-colours-in-an-image/
+		making.lyst.com/2014/02/22/color-detection/
+	k-means++
+		geeksforgeeks.org/ml-k-means-algorithm/
+	Superpixel segmentation
+	Inertia (to determine the best result from multiple runs)
+		https://scikit-learn.org/stable/modules/generated/sklearn.cluster.KMeans.html
+
+References
+	Backlog
+		github.com/ApoorvaJ/Papaya/
+		github.com/teryror/jpgq/
+		michaelfogleman.com/static/quads/
+		youtube.com/watch?v=4b5d3muPQmA
+
+Test images
+	bmptestsuite.sourceforge.net/
+	entropymine.com/jason/bmpsuite/
