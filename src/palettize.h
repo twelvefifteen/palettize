@@ -3,6 +3,7 @@
 #include <float.h>
 #include <stdint.h>
 
+// @Production: Make this a stub based on a macro or something
 #define Assert(Expression) if(!(Expression)) {*(int *)0 = 0;}
 #define InvalidCodePath Assert(!"InvalidCodePath")
 #define InvalidDefaultCase default: {InvalidCodePath;} break

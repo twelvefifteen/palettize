@@ -2,14 +2,14 @@ Algorithm
 	Automatically determine k
 		alanzucconi.com/2015/05/24/how-to-find-the-main-colours-in-an-image/
 		making.lyst.com/2014/02/22/color-detection/
-	k-means++
+	Seed with k-means++
 		geeksforgeeks.org/ml-k-means-algorithm/
-	Superpixel segmentation
-	Inertia (to determine the best result from multiple runs)
-		https://scikit-learn.org/stable/modules/generated/sklearn.cluster.KMeans.html
+	Support superpixel segmentation
+	Support inertia (to determine the best result from multiple runs)
+		scikit-learn.org/stable/modules/generated/sklearn.cluster.KMeans.html
 
 Build system
-	Delete *.obj after build.bat finishes
+	Delete *.obj once build.bat exits
 
 References
 	Backlog

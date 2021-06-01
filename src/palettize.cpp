@@ -41,7 +41,7 @@ GetNearestNeighborSample(bitmap Bitmap, f32 U, f32 V)
     Assert((0 <= SampleX) && (SampleX < Bitmap.Width));
     Assert((0 <= SampleY) && (SampleY < Bitmap.Height));
     
-    u32 Result = *(u32*)GetBitmapPtr(Bitmap, SampleX, SampleY);
+    u32 Result = *(u32 *)GetBitmapPtr(Bitmap, SampleX, SampleY);
     
     return(Result);
 }
@@ -64,8 +64,8 @@ Resize(bitmap Resized, bitmap Source)
             X < MaxX;
             X++)
         {
-            f32 U = ((f32)X / ((f32)MaxX - 1.0f));
-            f32 V = ((f32)Y / ((f32)MaxY - 1.0f));
+            f32 U = (f32)X / ((f32)MaxX - 1.0f);
+            f32 V = (f32)Y / ((f32)MaxY - 1.0f);
             u32 Sample = GetNearestNeighborSample(Source, U, V);
             *TexelPtr++ = Sample;
         }
@@ -106,7 +106,6 @@ AllocateClusterGroup(bitmap Bitmap, u32 Seed, int ClusterCount)
     ClusterGroup->ClusterCount = ClusterCount;
     ClusterGroup->Clusters = (cluster *)malloc(sizeof(cluster)*ClusterCount); 
     ClusterGroup->TotalObservationCount = 0;
-    // @Features: Support k-means++ as another cluster seeding option
     for(int ClusterIndex = 0;
         ClusterIndex < ClusterGroup->ClusterCount;
         ClusterIndex++)
@@ -145,8 +144,8 @@ AddObservation(cluster_group *ClusterGroup, v3 C)
     
     ClusterGroup->TotalObservationCount++;
     
-    // Returning the index of the closest cluster for our early out
-    // condition in the loop where this function's called
+    // Returning the index of the closest cluster for our early out in the loop
+    // where this function is called
     u32 Result = (u32)(ClosestCluster - ClusterGroup->Clusters);
     Assert(Result < (u32)ClusterGroup->ClusterCount);
     
@@ -164,8 +163,8 @@ CommitObservations(cluster_group *ClusterGroup)
         
         if(Cluster->ObservationCount)
         {
-            v3 NewCentroid = (Cluster->Centroid + Cluster->ObservationSum);
-            f32 InvOnePastObservationCount = (1.0f / ((f32)Cluster->ObservationCount + 1.0f));
+            v3 NewCentroid = Cluster->Centroid + Cluster->ObservationSum;
+            f32 InvOnePastObservationCount = 1.0f / ((f32)Cluster->ObservationCount + 1.0f);
             NewCentroid *= InvOnePastObservationCount;
             Cluster->Centroid = NewCentroid;
         }
@@ -181,7 +180,7 @@ CommitObservations(cluster_group *ClusterGroup)
 static void
 ExportBMP(bitmap Bitmap, char *Path)
 {
-    FILE* File = fopen(Path, "wb");
+    FILE *File = fopen(Path, "wb");
     if(File)
     {
         // Swizzling the red and blue components of each texel because
@@ -239,7 +238,8 @@ main(int ArgCount, char **Args)
             int RequestedClusterCount = atoi(Args[2]);
             ClusterCount = Clampi(1, RequestedClusterCount, 64);
         }
-        u32 Seed = 2019;
+        // @TODO: Base this one the timestamp of the machine at runtime
+        u32 Seed = 2021;
         if(ArgCount > 3)
         {
             Seed = (u32)atoi(Args[3]);
@@ -247,7 +247,7 @@ main(int ArgCount, char **Args)
         sort_type SortType = SortType_Weight;
         if(ArgCount > 4)
         {
-            char* SortTypeArg = Args[4];
+            char *SortTypeArg = Args[4];
             if(StringsMatch(SortTypeArg, "red", false))
             {
                 SortType = SortType_Red;
@@ -266,12 +266,9 @@ main(int ArgCount, char **Args)
         if(Source.Memory)
         {
             int MaxDim = Maximum(Source.Width, Source.Height);
-            f32 DimFactor = (100.0f / (f32)MaxDim);
+            f32 DimFactor = 100.0f / (f32)MaxDim;
             int ResizedWidth = RoundToInt(Source.Width*DimFactor);
             int ResizedHeight = RoundToInt(Source.Height*DimFactor);
-            // @Refactor: Since this program isn't sharing its code,
-            // perhaps Resize() can simply return an allocated bitmap instead
-            // of accepting one
             bitmap Resized = MakeEmptyBitmap(ResizedWidth, ResizedHeight);
             Resize(Resized, Source);
             
@@ -281,6 +278,7 @@ main(int ArgCount, char **Args)
             bitmap LastClusterIndexBuffer =
                 MakeEmptyBitmap(ResizedWidth, ResizedHeight);
             for(int Iteration = 0;
+                // @TODO: Make iteration count configurable
                 Iteration < 300;
                 Iteration++)
             {
@@ -383,8 +381,8 @@ main(int ArgCount, char **Args)
                     Inner < (ClusterGroup->ClusterCount - 1);
                     Inner++)
                 {
-                    cluster *ClusterA = (ClusterGroup->Clusters + Inner);
-                    cluster *ClusterB = (ClusterGroup->Clusters + (Inner + 1));
+                    cluster *ClusterA = ClusterGroup->Clusters + Inner;
+                    cluster *ClusterB = ClusterGroup->Clusters + Inner + 1;
                     
                     if(SortType == SortType_Weight)
                     {
@@ -436,7 +434,7 @@ main(int ArgCount, char **Args)
                 ClusterIndex < ClusterGroup->ClusterCount;
                 ClusterIndex++)
             {
-                cluster *Cluster = (ClusterGroup->Clusters + ClusterIndex);
+                cluster *Cluster = ClusterGroup->Clusters + ClusterIndex;
                 f32 Weight = SafeRatio0((f32)Cluster->TotalObservationCount,
                                         (f32)ClusterGroup->TotalObservationCount);
                 int ClusterPixelWidth = RoundToInt(Weight*PaletteWidth);
@@ -447,9 +445,9 @@ main(int ArgCount, char **Args)
 #endif
                 while(ClusterPixelWidth--)
                 {
-                    // @Robustness: A counter of how many pixels we've
-                    // written out (and breaking out if we've gone too far)
-                    // could prevent heap corruption bugs
+                    // @Robustness: Add a counter of how many pixels we've
+                    // written out (and breaking out if we've gone too far) to
+                    // prevent heap corruption bugs
                     *Row++ = CentroidColor;
                 }
             }
