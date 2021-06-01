@@ -1,6 +1,6 @@
 MIT License
 
-Copyright (c) 2019 Gustavo Velasquez (@twelvefifteen on GitHub)
+Copyright (c) 2021 Gustavo Velasquez (@theseventhsign on GitHub)
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal

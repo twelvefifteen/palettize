@@ -1,5 +1,4 @@
-#ifndef PALETTIZE_MATH_H
-#define PALETTIZE_MATH_H
+#if !defined(PALETTIZE_MATH_H)
 
 #include <math.h>
 
@@ -29,19 +28,19 @@ V3(f32 X, f32 Y, f32 Z)
 inline v3
 V3i(int X, int Y, int Z)
 {
-    v3 Result = {(f32)X, (f32)Y, (f32)Z};
+    v3 Result = V3((f32)X, (f32)Y, (f32)Z);
     
     return(Result);
 }
 
 // 
-// NOTE: Scalar operations
+// Scalar operations
 // 
 
 inline f32
-Clamp(f32 Min, f32 A, f32 Max)
+Clamp(f32 Min, f32 S, f32 Max)
 {
-    f32 Result = A;
+    f32 Result = S;
     if(Result < Min)
     {
         Result = Min;
@@ -50,37 +49,38 @@ Clamp(f32 Min, f32 A, f32 Max)
     {
         Result = Max;
     }
+
     return(Result);
 }
 
 inline int
-Clampi(int Min, int A, int Max)
+Clampi(int Min, int S, int Max)
 {
-    int Result = (int)Clamp((f32)Min, (f32)A, (f32)Max);
+    int Result = (int)Clamp((f32)Min, (f32)S, (f32)Max);
     
     return(Result);
 }
 
 inline f32
-Clamp01(f32 A)
+Clamp01(f32 S)
 {
-    f32 Result = Clamp(0.0f, A, 1.0f);
+    f32 Result = Clamp(0.0f, S, 1.0f);
     
     return(Result);
 }
 
 inline f32
-Cube(f32 A)
+Cube(f32 S)
 {
-    f32 Result = (A*A*A);
-    
+    f32 Result = S*S*S;
+
     return(Result);
 }
 
 inline f32
-CubeRoot(f32 A)
+CubeRoot(f32 S)
 {
-    f32 Result = cbrtf(A);
+    f32 Result = cbrtf(S);
     
     return(Result);
 }
@@ -93,18 +93,26 @@ Pow(f32 X, f32 Y)
     return(Result);
 }
 
-inline int
-RoundToInt(f32 A)
+inline f32
+Round(f32 S)
 {
-    int Result = (int)roundf(A);
+    f32 Result = roundf(S);
+
+    return(Result);
+}
+
+inline int
+RoundToInt(f32 S)
+{
+    int Result = (int)Round(S);
     
     return(Result);
 }
 
 inline u32
-RoundToU32(f32 A)
+RoundToU32(f32 S)
 {
-    u32 Result = (u32)roundf(A);
+    u32 Result = (u32)Round(S);
     
     return(Result);
 }
@@ -117,6 +125,7 @@ SafeRatioN(f32 Dividend, f32 Divisor, f32 N)
     {
         Result = (Dividend / Divisor);
     }
+
     return(Result);
 }
 
@@ -129,32 +138,32 @@ SafeRatio0(f32 Dividend, f32 Divisor)
 }
 
 inline f32
-Square(f32 A)
+Square(f32 S)
 {
-    f32 Result = (A*A);
+    f32 Result = S*S;
     
     return(Result);
 }
 
 inline f32
-SquareRoot(f32 A)
+SquareRoot(f32 S)
 {
-    f32 Result = sqrtf(A);
+    f32 Result = sqrtf(S);
     
     return(Result);
 }
 
 // 
-// NOTE: v3 operations
+// v3 operations
 // 
 
 inline v3
 operator+(v3 A, v3 B)
 {
     v3 Result;
-    Result.x = (A.x + B.x);
-    Result.y = (A.y + B.y);
-    Result.z = (A.z + B.z);
+    Result.x = A.x + B.x;
+    Result.y = A.y + B.y;
+    Result.z = A.z + B.z;
     
     return(Result);
 }
@@ -163,9 +172,9 @@ inline v3
 operator-(v3 A, v3 B)
 {
     v3 Result;
-    Result.x = (A.x - B.x);
-    Result.y = (A.y - B.y);
-    Result.z = (A.z - B.z);
+    Result.x = A.x - B.x;
+    Result.y = A.y - B.y;
+    Result.z = A.z - B.z;
     
     return(Result);
 }
@@ -174,23 +183,23 @@ inline v3
 operator*(v3 A, f32 S)
 {
     v3 Result;
-    Result.x = (A.x*S);
-    Result.y = (A.y*S);
-    Result.z = (A.z*S);
+    Result.x = A.x*S;
+    Result.y = A.y*S;
+    Result.z = A.z*S;
     
     return(Result);
 }
 
 inline void
-operator+=(v3& A, v3 B)
+operator+=(v3 &A, v3 B)
 {
-    A = (A + B);
+    A = A + B;
 }
 
 inline void
-operator*=(v3& A, f32 S)
+operator*=(v3 &A, f32 S)
 {
-    A = (A*S);
+    A = A*S;
 }
 
 inline f32
@@ -203,9 +212,9 @@ Dot(v3 A, v3 B)
 }
 
 inline f32
-LengthSquared(v3 A)
+LengthSquared(v3 V)
 {
-    f32 Result = Dot(A, A);
+    f32 Result = Dot(V, V);
     
     return(Result);
 }
@@ -257,22 +266,22 @@ UnpackRGBA(u32 C)
 }
 
 // 
-// NOTE: m3x3 operations
+// m3x3 operations
 // 
 
 inline v3
-operator*(m3x3 A, v3 V)
+operator*(m3x3 M, v3 V)
 {
     v3 Result;
-    Result.x = Dot(V3(A.XAxis.x, A.YAxis.x, A.ZAxis.x), V);
-    Result.y = Dot(V3(A.XAxis.y, A.YAxis.y, A.ZAxis.y), V);
-    Result.z = Dot(V3(A.XAxis.z, A.YAxis.z, A.ZAxis.z), V);
+    Result.x = Dot(V3(M.XAxis.x, M.YAxis.x, M.ZAxis.x), V);
+    Result.y = Dot(V3(M.XAxis.y, M.YAxis.y, M.ZAxis.y), V);
+    Result.z = Dot(V3(M.XAxis.z, M.YAxis.z, M.ZAxis.z), V);
     
     return(Result);
 }
 
 // 
-// NOTE: Color space operations
+// Color space operations
 // 
 
 // White point coords for Illuminant D65
@@ -355,7 +364,7 @@ LinearRGBToCIEXYZ(v3 A)
     Matrix.XAxis = V3(0.4124564f, 0.2126729f, 0.0193339f);
     Matrix.YAxis = V3(0.3575761f, 0.7151522f, 0.1191920f);
     Matrix.ZAxis = V3(0.1804375f, 0.0721750f, 0.9503041f);
-    v3 Result = (Matrix*A);
+    v3 Result = Matrix*A;
     
     return(Result);
 }
@@ -368,7 +377,7 @@ LinearRGBTosRGB(f32 A)
     f32 Result;
     if(A <= 0.0031308f)
     {
-        Result = (12.92f*A);
+        Result = 12.92f*A;
     }
     else
     {
@@ -421,4 +430,5 @@ UnpackRGBAToCIELAB(u32 A)
     return(ResultCIELAB);
 }
 
+#define PALETTIZE_MATH_H
 #endif

@@ -1,8 +1,18 @@
-#ifndef PALETTIZE_H
-#define PALETTIZE_H
+#if !defined(PALETTIZE_H)
 
 #include <float.h>
 #include <stdint.h>
+
+#define Assert(Expression) if(!(Expression)) {*(int *)0 = 0;}
+#define InvalidCodePath Assert(!"InvalidCodePath")
+#define InvalidDefaultCase default: {InvalidCodePath;} break
+
+#define ArrayCount(Array) (sizeof((Array)) / sizeof((Array)[0]))
+
+#define Maximum(A, B) ((A) > (B) ? (A) : (B))
+#define Minimum(A, B) ((A) < (B) ? (A) : (B))
+
+#define F32Max FLT_MAX
 
 typedef int32_t s32;
 typedef s32 b32;
@@ -15,61 +25,9 @@ typedef uintptr_t umm;
 
 typedef float f32;
 
-#define F32Max FLT_MAX
-
-#if PALETTIZE_DEBUG
-#define Assert(Expression) if(!(Expression)) {*(int*)0 = 0;}
-#else
-#define Assert(Expression)
-#endif
-#define InvalidCodePath Assert(!"InvalidCodePath")
-#define InvalidDefaultCase default: {InvalidCodePath;} break
-
-#define ArrayCount(Array) (sizeof((Array)) / sizeof((Array)[0]))
-
-#define Maximum(A, B) ((A) > (B) ? (A) : (B))
-#define Minimum(A, B) ((A) < (B) ? (A) : (B))
-
-inline char
-FlipCase(char C)
-{
-    char Result = '\0';
-    if(('a' <= C) && (C <= 'z'))
-    {
-        Result = ((C - 'a') + 'A');
-    }
-    else if(('A' <= C) && (C <= 'Z'))
-    {
-        Result = ((C - 'A') + 'a');
-    }
-    return(Result);
-}
-
-inline b32
-StringsAreEqualCaseInsensitive(char* A, char* B)
-{
-    while(*A &&
-          *B)
-    {
-        if((*A == *B) ||
-           (*A == FlipCase(*B)))
-        {
-            A++;
-            B++;
-        }
-        else
-        {
-            break;
-        }
-    }
-    
-    b32 Result = (*A == *B);
-    
-    return(Result);
-}
-
 #include "palettize_math.h"
 #include "palettize_random.h"
+#include "palettize_string.h"
 
 enum sort_type
 {
@@ -79,10 +37,10 @@ enum sort_type
     SortType_Blue,
 };
 
-#define GetBitmapPtr(Bitmap, X, Y) ((u8*)(Bitmap).Address + (sizeof(u32)*(X)) + ((Y)*(Bitmap).Pitch))
+#define GetBitmapPtr(Bitmap, X, Y) ((u8 *)(Bitmap).Memory + (sizeof(u32)*(X)) + ((Y)*(Bitmap).Pitch))
 struct bitmap
 {
-    void* Address;
+    void *Memory;
     int Width;
     int Height;
     umm Pitch;
@@ -104,7 +62,7 @@ struct cluster_group
     bitmap Bitmap;
     
     int ClusterCount;
-    cluster* Clusters;
+    cluster *Clusters;
     
     int TotalObservationCount;
 };
@@ -134,4 +92,5 @@ struct bitmap_header
 
 #pragma pack(pop)
 
+#define PALETTIZE_H
 #endif

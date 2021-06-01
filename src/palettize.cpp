@@ -9,11 +9,11 @@
 #include "palettize.h"
 
 static bitmap
-LoadBitmap(char* Path)
+LoadBitmap(char *Path)
 {
     bitmap Result;
-    Result.Address = stbi_load(Path, &Result.Width, &Result.Height, 0, 4);
-    Result.Pitch = (sizeof(u32)*Result.Width);
+    Result.Memory = stbi_load(Path, &Result.Width, &Result.Height, 0, 4);
+    Result.Pitch = sizeof(u32)*Result.Width;
     
     return(Result);
 }
@@ -22,10 +22,10 @@ static bitmap
 MakeEmptyBitmap(int Width, int Height)
 {
     bitmap Result;
-    Result.Address = malloc(sizeof(u32)*Width*Height);
+    Result.Memory = malloc(sizeof(u32)*Width*Height);
     Result.Width = Width;
     Result.Height = Height;
-    Result.Pitch = (sizeof(u32)*Width);
+    Result.Pitch = sizeof(u32)*Width;
     
     return(Result);
 }
@@ -54,12 +54,12 @@ Resize(bitmap Resized, bitmap Source)
     int MaxX = Resized.Width;
     int MaxY = Resized.Height;
     
-    u8* Row = (u8*)GetBitmapPtr(Resized, MinX, MinY);
+    u8 *Row = (u8 *)GetBitmapPtr(Resized, MinX, MinY);
     for(int Y = MinY;
         Y < MaxY;
         Y++)
     {
-        u32* TexelPtr = (u32*)Row;
+        u32* TexelPtr = (u32 *)Row;
         for(int X = MinX;
             X < MaxX;
             X++)
@@ -75,13 +75,13 @@ Resize(bitmap Resized, bitmap Source)
 }
 
 static void
-SeedCluster(cluster_group* ClusterGroup, cluster* Cluster)
+SeedCluster(cluster_group *ClusterGroup, cluster *Cluster)
 {
     u32 RandomSampleX =
         RandomU32Between(&ClusterGroup->Entropy, 0, (u32)(ClusterGroup->Bitmap.Width - 1));
     u32 RandomSampleY =
         RandomU32Between(&ClusterGroup->Entropy, 0, (u32)(ClusterGroup->Bitmap.Height - 1));
-    u32 RandomSample = *(u32*)GetBitmapPtr(ClusterGroup->Bitmap, RandomSampleX, RandomSampleY);
+    u32 RandomSample = *(u32 *)GetBitmapPtr(ClusterGroup->Bitmap, RandomSampleX, RandomSampleY);
 #if PALETTIZE_CIELAB
     v3 RandomSampleV3 = UnpackRGBAToCIELAB(RandomSample);
 #else
@@ -91,20 +91,20 @@ SeedCluster(cluster_group* ClusterGroup, cluster* Cluster)
 }
 
 static void
-ClearClusterObservations(cluster* Cluster)
+ClearClusterObservations(cluster *Cluster)
 {
     Cluster->ObservationSum = V3i(0, 0, 0);
     Cluster->ObservationCount = 0;
 }
 
-static cluster_group*
+static cluster_group *
 AllocateClusterGroup(bitmap Bitmap, u32 Seed, int ClusterCount)
 {
-    cluster_group* ClusterGroup = (cluster_group*)malloc(sizeof(cluster_group));
+    cluster_group *ClusterGroup = (cluster_group *)malloc(sizeof(cluster_group));
     ClusterGroup->Entropy = SeedSeries(Seed);
     ClusterGroup->Bitmap = Bitmap;
     ClusterGroup->ClusterCount = ClusterCount;
-    ClusterGroup->Clusters = (cluster*)malloc(sizeof(cluster)*ClusterCount); 
+    ClusterGroup->Clusters = (cluster *)malloc(sizeof(cluster)*ClusterCount); 
     ClusterGroup->TotalObservationCount = 0;
     // @Features: Support k-means++ as another cluster seeding option
     for(int ClusterIndex = 0;
@@ -121,7 +121,7 @@ AllocateClusterGroup(bitmap Bitmap, u32 Seed, int ClusterCount)
 }
 
 static u32
-AddObservation(cluster_group* ClusterGroup, v3 C)
+AddObservation(cluster_group *ClusterGroup, v3 C)
 {
     f32 ClosestDistSquared = F32Max;
     cluster* ClosestCluster = 0;
@@ -154,13 +154,13 @@ AddObservation(cluster_group* ClusterGroup, v3 C)
 }
 
 static void
-CommitObservations(cluster_group* ClusterGroup)
+CommitObservations(cluster_group *ClusterGroup)
 {
     for(int ClusterIndex = 0;
         ClusterIndex < ClusterGroup->ClusterCount;
         ClusterIndex++)
     {
-        cluster* Cluster = (ClusterGroup->Clusters + ClusterIndex);
+        cluster *Cluster = (ClusterGroup->Clusters + ClusterIndex);
         
         if(Cluster->ObservationCount)
         {
@@ -179,19 +179,19 @@ CommitObservations(cluster_group* ClusterGroup)
 }
 
 static void
-ExportBMP(bitmap Bitmap, char* Path)
+ExportBMP(bitmap Bitmap, char *Path)
 {
     FILE* File = fopen(Path, "wb");
     if(File)
     {
         // Swizzling the red and blue components of each texel because
         // that's how BMPs expect channels to be ordered
-        u8* Row = (u8*)Bitmap.Address;
+        u8 *Row = (u8 *)Bitmap.Memory;
         for(int Y = 0;
             Y < Bitmap.Height;
             Y++)
         {
-            u32* TexelPtr = (u32*)Row;
+            u32 *TexelPtr = (u32 *)Row;
             for(int X = 0;
                 X < Bitmap.Width;
                 X++)
@@ -211,7 +211,7 @@ ExportBMP(bitmap Bitmap, char* Path)
         
         bitmap_header BitmapHeader = {};
         BitmapHeader.Type = 0x4D42;
-        BitmapHeader.FileSize = (sizeof(BitmapHeader) + BitmapSize);
+        BitmapHeader.FileSize = sizeof(BitmapHeader) + BitmapSize;
         BitmapHeader.OffBits = sizeof(BitmapHeader);
         BitmapHeader.Size = 40; // sizeof(BITMAPINFOHEADER)
         BitmapHeader.Width = Bitmap.Width;
@@ -221,18 +221,18 @@ ExportBMP(bitmap Bitmap, char* Path)
         BitmapHeader.Compression = BI_RGB;
         
         fwrite(&BitmapHeader, sizeof(BitmapHeader), 1,  File);
-        fwrite(Bitmap.Address, BitmapSize, 1, File);
+        fwrite(Bitmap.Memory, BitmapSize, 1, File);
         
         fclose(File);
     }
 }
 
 int
-main(int ArgCount, char** Args)
+main(int ArgCount, char **Args)
 {
     if(ArgCount > 1)
     {
-        char* SourcePath = Args[1];
+        char *SourcePath = Args[1];
         int ClusterCount = 5;
         if(ArgCount > 2)
         {
@@ -248,22 +248,22 @@ main(int ArgCount, char** Args)
         if(ArgCount > 4)
         {
             char* SortTypeArg = Args[4];
-            if(StringsAreEqualCaseInsensitive(SortTypeArg, "red"))
+            if(StringsMatch(SortTypeArg, "red", false))
             {
                 SortType = SortType_Red;
             }
-            else if(StringsAreEqualCaseInsensitive(SortTypeArg, "green"))
+            else if(StringsMatch(SortTypeArg, "green", false))
             {
                 SortType = SortType_Green;
             }
-            else if(StringsAreEqualCaseInsensitive(SortTypeArg, "blue"))
+            else if(StringsMatch(SortTypeArg, "blue", false))
             {
                 SortType = SortType_Blue;
             }
         }
         
         bitmap Source = LoadBitmap(SourcePath);
-        if(Source.Address)
+        if(Source.Memory)
         {
             int MaxDim = Maximum(Source.Width, Source.Height);
             f32 DimFactor = (100.0f / (f32)MaxDim);
@@ -275,7 +275,7 @@ main(int ArgCount, char** Args)
             bitmap Resized = MakeEmptyBitmap(ResizedWidth, ResizedHeight);
             Resize(Resized, Source);
             
-            cluster_group* ClusterGroup =
+            cluster_group *ClusterGroup =
                 AllocateClusterGroup(Resized, Seed, ClusterCount);
             
             bitmap LastClusterIndexBuffer =
@@ -291,12 +291,12 @@ main(int ArgCount, char** Args)
                 
                 b32 IndexChangeOccurred = false;
                 
-                u8* Row = (u8*)GetBitmapPtr(Resized, MinX, MinY);
+                u8 *Row = (u8 *)GetBitmapPtr(Resized, MinX, MinY);
                 for(int Y = MinY;
                     Y < MaxY;
                     Y++)
                 {
-                    u32* TexelPtr = (u32*)Row;
+                    u32 *TexelPtr = (u32 *)Row;
                     for(int X = MinX;
                         X < MaxX;
                         X++)
@@ -310,8 +310,8 @@ main(int ArgCount, char** Args)
 #endif
                         u32 ClusterIndex = AddObservation(ClusterGroup,
                                                           TexelV3);
-                        u32* PrevClusterIndexPtr =
-                            (u32*)GetBitmapPtr(LastClusterIndexBuffer, X, Y);
+                        u32 *PrevClusterIndexPtr =
+                            (u32 *)GetBitmapPtr(LastClusterIndexBuffer, X, Y);
                         if(Iteration > 0)
                         {
                             if(*PrevClusterIndexPtr != ClusterIndex)
@@ -383,8 +383,8 @@ main(int ArgCount, char** Args)
                     Inner < (ClusterGroup->ClusterCount - 1);
                     Inner++)
                 {
-                    cluster* ClusterA = (ClusterGroup->Clusters + Inner);
-                    cluster* ClusterB = (ClusterGroup->Clusters + (Inner + 1));
+                    cluster *ClusterA = (ClusterGroup->Clusters + Inner);
+                    cluster *ClusterB = (ClusterGroup->Clusters + (Inner + 1));
                     
                     if(SortType == SortType_Weight)
                     {
@@ -427,16 +427,16 @@ main(int ArgCount, char** Args)
             int PaletteWidth = 512;
             int PaletteHeight = 64;
             
-            u8* ScanLine = (u8*)malloc(sizeof(u32)*PaletteWidth);
+            u8 *ScanLine = (u8 *)malloc(sizeof(u32)*PaletteWidth);
             
             // @Features: Sort colors as best you can before generating
             // the scan line?
-            u32* Row = (u32*)ScanLine;
+            u32 *Row = (u32 *)ScanLine;
             for(int ClusterIndex = 0;
                 ClusterIndex < ClusterGroup->ClusterCount;
                 ClusterIndex++)
             {
-                cluster* Cluster = (ClusterGroup->Clusters + ClusterIndex);
+                cluster *Cluster = (ClusterGroup->Clusters + ClusterIndex);
                 f32 Weight = SafeRatio0((f32)Cluster->TotalObservationCount,
                                         (f32)ClusterGroup->TotalObservationCount);
                 int ClusterPixelWidth = RoundToInt(Weight*PaletteWidth);
@@ -455,13 +455,13 @@ main(int ArgCount, char** Args)
             }
             
             bitmap Palette = MakeEmptyBitmap(PaletteWidth, PaletteHeight);
-            u8* DestRow = (u8*)Palette.Address;
+            u8 *DestRow = (u8 *)Palette.Memory;
             for(int Y = 0;
                 Y < PaletteHeight;
                 Y++)
             {
-                u32* SourceTexelPtr = (u32*)ScanLine;
-                u32* DestTexelPtr = (u32*)DestRow;
+                u32 *SourceTexelPtr = (u32 *)ScanLine;
+                u32 *DestTexelPtr = (u32 *)DestRow;
                 for(int X = 0;
                     X < PaletteWidth;
                     X++)

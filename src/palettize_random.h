@@ -1,5 +1,4 @@
-#ifndef PALETTIZE_RANDOM_H
-#define PALETTIZE_RANDOM_H
+#if !defined(PALETTIZE_RANDOM_H)
 
 struct random_series
 {
@@ -16,13 +15,13 @@ SeedSeries(u32 Seed)
 }
 
 inline u32
-RandomU32(random_series* Series)
+RandomU32(random_series *Series)
 {
-    // NOTE: 32-bit xorshift implementation
+    // 32-bit Xorshift
     u32 Result = Series->Seed;
-	Result ^= (Result << 13);
-	Result ^= (Result >> 17);
-    Result ^= (Result << 5);
+	Result ^= Result << 13;
+	Result ^= Result >> 17;
+    Result ^= Result << 5;
     
     Series->Seed = Result;
     
@@ -30,13 +29,13 @@ RandomU32(random_series* Series)
 }
 
 inline u32
-RandomU32Between(random_series* Series, u32 Min, u32 Max)
+RandomU32Between(random_series *Series, u32 Min, u32 Max)
 {
-    u32 Range = (Max - Min);
-    u32 Random = RandomU32(Series);
-    u32 Result = (Min + (Random % Range));
+    u32 Result = (Min + (RandomU32(Series) % (Max - Min)));
     Assert((Min <= Result) && (Result <= Max));
+
     return(Result);
 }
 
+#define PALETTIZE_RANDOM_H
 #endif
