@@ -402,8 +402,6 @@ main(int ArgCount, char **Args)
             
             u8 *ScanLine = (u8 *)malloc(sizeof(u32)*PaletteWidth);
             
-            // @Features: Sort colors as best you can before generating
-            // the scan line?
             u32 *Row = (u32 *)ScanLine;
             for(int ClusterIndex = 0;
                 ClusterIndex < ClusterGroup->ClusterCount;
