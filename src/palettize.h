@@ -38,6 +38,19 @@ enum sort_type
     SortType_Blue,
 };
 
+struct palettize_config
+{
+    char *SourcePath;
+    char *DestPath;
+
+    u32 Seed;
+    
+    int ClusterCount;
+    int IterationCount;
+    
+    sort_type SortType;
+};
+
 #define GetBitmapPtr(Bitmap, X, Y) ((u8 *)(Bitmap).Memory + (sizeof(u32)*(X)) + ((Y)*(Bitmap).Pitch))
 struct bitmap
 {

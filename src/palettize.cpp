@@ -8,6 +8,58 @@
 
 #include "palettize.h"
 
+static palettize_config
+ParseCommandLine(int ArgCount, char **Args)
+{
+    palettize_config Config = {};
+    Config.SourcePath = 0;
+    Config.ClusterCount = 5;
+    Config.Seed = 0xFACADE;
+    Config.SortType = SortType_Weight;
+    Config.IterationCount = 300;
+    Config.DestPath = "palette.bmp";
+
+    if(ArgCount > 1)
+    {
+        Config.SourcePath = Args[1];
+    }
+    if(ArgCount > 2)
+    {
+        int RequestedClusterCount = atoi(Args[2]);
+        Config.ClusterCount = Clampi(1, RequestedClusterCount, 64);
+    }
+    if(ArgCount > 3)
+    {
+        Config.Seed = (u32)atoi(Args[3]);
+    }
+    if(ArgCount > 4)
+    {
+        char *SortTypeString = Args[4];
+        if(StringsMatch(SortTypeString, "red", false))
+        {
+            Config.SortType = SortType_Red;
+        }
+        else if(StringsMatch(SortTypeString, "green", false))
+        {
+            Config.SortType = SortType_Green;
+        }
+        else if(StringsMatch(SortTypeString, "blue", false))
+        {
+            Config.SortType = SortType_Blue;
+        }
+    }
+    if(ArgCount > 5)
+    {
+        Config.IterationCount = (int)atoi(Args[5]);
+    }
+    if(ArgCount > 6)
+    {
+        Config.DestPath = Args[6];
+    }
+
+    return(Config);
+}
+
 static bitmap
 LoadBitmap(char *Path)
 {
@@ -19,7 +71,7 @@ LoadBitmap(char *Path)
 }
 
 static bitmap
-MakeEmptyBitmap(int Width, int Height)
+AllocateBitmap(int Width, int Height)
 {
     bitmap Result;
     Result.Memory = malloc(sizeof(u32)*Width*Height);
@@ -31,47 +83,57 @@ MakeEmptyBitmap(int Width, int Height)
 }
 
 static u32
-GetNearestNeighborSample(bitmap Bitmap, f32 U, f32 V)
+SampleNearestNeighbor(bitmap Bitmap, f32 U, f32 V)
 {
     Assert((0.0f <= U) && (U <= 1.0f));
     Assert((0.0f <= V) && (V <= 1.0f));
     
     int SampleX = RoundToInt(U*((f32)Bitmap.Width - 1.0f));
     int SampleY = RoundToInt(V*((f32)Bitmap.Height - 1.0f));
+
     Assert((0 <= SampleX) && (SampleX < Bitmap.Width));
     Assert((0 <= SampleY) && (SampleY < Bitmap.Height));
     
-    u32 Result = *(u32 *)GetBitmapPtr(Bitmap, SampleX, SampleY);
+    u32 Sample = *(u32 *)GetBitmapPtr(Bitmap, SampleX, SampleY);
     
-    return(Result);
+    return(Sample);
 }
 
 static void
-Resize(bitmap Resized, bitmap Source)
+ResizeBitmap(bitmap Source, bitmap Dest)
 {
     int MinX = 0;
     int MinY = 0;
-    int MaxX = Resized.Width;
-    int MaxY = Resized.Height;
+    int MaxX = Dest.Width;
+    int MaxY = Dest.Height;
     
-    u8 *Row = (u8 *)GetBitmapPtr(Resized, MinX, MinY);
+    u8 *Row = (u8 *)GetBitmapPtr(Dest, MinX, MinY);
     for(int Y = MinY;
         Y < MaxY;
-        Y++)
+        ++Y)
     {
         u32* TexelPtr = (u32 *)Row;
         for(int X = MinX;
             X < MaxX;
-            X++)
+            ++X)
         {
             f32 U = (f32)X / ((f32)MaxX - 1.0f);
             f32 V = (f32)Y / ((f32)MaxY - 1.0f);
-            u32 Sample = GetNearestNeighborSample(Source, U, V);
+
+            u32 Sample = SampleNearestNeighbor(Source, U, V);
+            
             *TexelPtr++ = Sample;
         }
         
-        Row += Resized.Pitch;
+        Row += Dest.Pitch;
     }
+}
+
+static void
+ClearClusterObservations(cluster *Cluster)
+{
+    Cluster->ObservationSum = V3i(0, 0, 0);
+    Cluster->ObservationCount = 0;
 }
 
 static void
@@ -82,31 +144,26 @@ SeedCluster(cluster_group *ClusterGroup, cluster *Cluster)
     u32 RandomSampleY =
         RandomU32Between(&ClusterGroup->Entropy, 0, (u32)(ClusterGroup->Bitmap.Height - 1));
     u32 RandomSample = *(u32 *)GetBitmapPtr(ClusterGroup->Bitmap, RandomSampleX, RandomSampleY);
-    v3 RandomSampleV3 = UnpackRGBAToCIELAB(RandomSample);
-    Cluster->Centroid = RandomSampleV3;
-}
-
-static void
-ClearClusterObservations(cluster *Cluster)
-{
-    Cluster->ObservationSum = V3i(0, 0, 0);
-    Cluster->ObservationCount = 0;
+    
+    Cluster->Centroid = UnpackRGBAToCIELAB(RandomSample);
 }
 
 static cluster_group *
 AllocateClusterGroup(bitmap Bitmap, u32 Seed, int ClusterCount)
 {
     cluster_group *ClusterGroup = (cluster_group *)malloc(sizeof(cluster_group));
+    
     ClusterGroup->Entropy = SeedSeries(Seed);
     ClusterGroup->Bitmap = Bitmap;
     ClusterGroup->ClusterCount = ClusterCount;
     ClusterGroup->Clusters = (cluster *)malloc(sizeof(cluster)*ClusterCount); 
     ClusterGroup->TotalObservationCount = 0;
+
     for(int ClusterIndex = 0;
         ClusterIndex < ClusterGroup->ClusterCount;
-        ClusterIndex++)
+        ++ClusterIndex)
     {
-        cluster* Cluster = (ClusterGroup->Clusters + ClusterIndex);
+        cluster* Cluster = ClusterGroup->Clusters + ClusterIndex;
         Cluster->TotalObservationCount = 0;
         ClearClusterObservations(Cluster);
         SeedCluster(ClusterGroup, Cluster);
@@ -227,65 +284,34 @@ main(int ArgCount, char **Args)
 {
     if(ArgCount > 1)
     {
-        char *SourcePath = Args[1];
-        int ClusterCount = 5;
-        if(ArgCount > 2)
-        {
-            int RequestedClusterCount = atoi(Args[2]);
-            ClusterCount = Clampi(1, RequestedClusterCount, 64);
-        }
-        // @TODO: Base this one the timestamp of the machine at runtime
-        u32 Seed = 2021;
-        if(ArgCount > 3)
-        {
-            Seed = (u32)atoi(Args[3]);
-        }
-        sort_type SortType = SortType_Weight;
-        if(ArgCount > 4)
-        {
-            char *SortTypeArg = Args[4];
-            if(StringsMatch(SortTypeArg, "red", false))
-            {
-                SortType = SortType_Red;
-            }
-            else if(StringsMatch(SortTypeArg, "green", false))
-            {
-                SortType = SortType_Green;
-            }
-            else if(StringsMatch(SortTypeArg, "blue", false))
-            {
-                SortType = SortType_Blue;
-            }
-        }
+        palettize_config Config = ParseCommandLine(ArgCount, Args);
         
-        bitmap Source = LoadBitmap(SourcePath);
-        if(Source.Memory)
+        bitmap SourceBitmap = LoadBitmap(Config.SourcePath);
+        if(SourceBitmap.Memory)
         {
-            int MaxDim = Maximum(Source.Width, Source.Height);
-            f32 DimFactor = 100.0f / (f32)MaxDim;
-            int ResizedWidth = RoundToInt(Source.Width*DimFactor);
-            int ResizedHeight = RoundToInt(Source.Height*DimFactor);
-            bitmap Resized = MakeEmptyBitmap(ResizedWidth, ResizedHeight);
-            Resize(Resized, Source);
+            // To improve performance, the source image is resized so that its
+            // largest dimension has a value of 100 pixels
+            f32 DimFactor = 100.0f / (f32)Maximum(SourceBitmap.Width, SourceBitmap.Height);
+            bitmap Bitmap = AllocateBitmap(RoundToInt(SourceBitmap.Width*DimFactor),
+                                           RoundToInt(SourceBitmap.Height*DimFactor));
+            ResizeBitmap(SourceBitmap, Bitmap);
             
             cluster_group *ClusterGroup =
-                AllocateClusterGroup(Resized, Seed, ClusterCount);
+                AllocateClusterGroup(Bitmap, Config.Seed, Config.ClusterCount);
             
-            bitmap LastClusterIndexBuffer =
-                MakeEmptyBitmap(ResizedWidth, ResizedHeight);
+            bitmap LastClusterIndexBuffer = AllocateBitmap(Bitmap.Width, Bitmap.Height);
             for(int Iteration = 0;
-                // @TODO: Make iteration count configurable
-                Iteration < 300;
+                Iteration < Config.IterationCount;
                 Iteration++)
             {
+                b32 IndexChangeOccurred = false;
+
                 int MinX = 0;
                 int MinY = 0;
-                int MaxX = Resized.Width;
-                int MaxY = Resized.Height;
+                int MaxX = Bitmap.Width;
+                int MaxY = Bitmap.Height;
                 
-                b32 IndexChangeOccurred = false;
-                
-                u8 *Row = (u8 *)GetBitmapPtr(Resized, MinX, MinY);
+                u8 *Row = (u8 *)GetBitmapPtr(Bitmap, MinX, MinY);
                 for(int Y = MinY;
                     Y < MaxY;
                     Y++)
@@ -300,6 +326,7 @@ main(int ArgCount, char **Args)
                         v3 TexelV3 = UnpackRGBAToCIELAB(Texel);
                         u32 ClusterIndex = AddObservation(ClusterGroup,
                                                           TexelV3);
+
                         u32 *PrevClusterIndexPtr =
                             (u32 *)GetBitmapPtr(LastClusterIndexBuffer, X, Y);
                         if(Iteration > 0)
@@ -314,7 +341,7 @@ main(int ArgCount, char **Args)
                         TexelPtr++;
                     }
                     
-                    Row += Resized.Pitch;
+                    Row += Bitmap.Pitch;
                 }
                 
                 CommitObservations(ClusterGroup);
@@ -324,42 +351,46 @@ main(int ArgCount, char **Args)
                     break;
                 }
             }
-            
+      
             v3 FocalColor = V3i(0, 0, 0);
-            switch(SortType)
+            switch(Config.SortType)
             {
                 case SortType_Red:
                 {
-                    FocalColor =
-                        V3(53.23288178584245f, 80.10930952982204f, 67.22006831026425f);
+                    FocalColor = {53.23288178584245f,
+                                  80.10930952982204f,
+                                  67.22006831026425f};
                 } break;
                 
                 case SortType_Green:
                 {
-                    FocalColor =
-                        V3(87.73703347354422f, -86.18463649762525f, 83.18116474777854);
+                    FocalColor = {87.73703347354422f,
+                                  -86.18463649762525f,
+                                  83.18116474777854};
                 } break;
                 
                 case SortType_Blue:
                 {
-                    FocalColor =
-                        V3(32.302586667249486, 79.19666178930935, -107.86368104495168);
+                    FocalColor = {32.302586667249486,
+                                  79.19666178930935,
+                                  -107.86368104495168};
                 } break;
             }
+
             for(int Outer = 0;
                 Outer < ClusterGroup->ClusterCount;
-                Outer++)
+                ++Outer)
             {
                 b32 SwapOccurred = false;
                 
                 for(int Inner = 0;
                     Inner < (ClusterGroup->ClusterCount - 1);
-                    Inner++)
+                    ++Inner)
                 {
                     cluster *ClusterA = ClusterGroup->Clusters + Inner;
                     cluster *ClusterB = ClusterGroup->Clusters + Inner + 1;
                     
-                    if(SortType == SortType_Weight)
+                    if(Config.SortType == SortType_Weight)
                     {
                         Assert((FocalColor.x == 0.0f) && (FocalColor.y == 0.0f) && (FocalColor.z == 0.0f));
                         
@@ -374,12 +405,10 @@ main(int ArgCount, char **Args)
                     }
                     else
                     {
-                        Assert((SortType == SortType_Red) || (SortType == SortType_Green) || (SortType == SortType_Blue));
+                        Assert((Config.SortType == SortType_Red) || (Config.SortType == SortType_Green) || (Config.SortType == SortType_Blue));
                         
-                        f32 DistSquaredToColorA =
-                            LengthSquared(FocalColor - ClusterA->Centroid);
-                        f32 DistSquaredToColorB =
-                            LengthSquared(FocalColor - ClusterB->Centroid);
+                        f32 DistSquaredToColorA = LengthSquared(FocalColor - ClusterA->Centroid);
+                        f32 DistSquaredToColorB = LengthSquared(FocalColor - ClusterB->Centroid);
                         if(DistSquaredToColorB < DistSquaredToColorA)
                         {
                             cluster Swap = *ClusterA;
@@ -396,7 +425,7 @@ main(int ArgCount, char **Args)
                     break;
                 }
             }
-            
+    
             int PaletteWidth = 512;
             int PaletteHeight = 64;
             
@@ -408,11 +437,12 @@ main(int ArgCount, char **Args)
                 ClusterIndex++)
             {
                 cluster *Cluster = ClusterGroup->Clusters + ClusterIndex;
+
                 f32 Weight = SafeRatio0((f32)Cluster->TotalObservationCount,
                                         (f32)ClusterGroup->TotalObservationCount);
                 int ClusterPixelWidth = RoundToInt(Weight*PaletteWidth);
-                u32 CentroidColor = PackCIELABToRGBA(Cluster->Centroid);
 
+                u32 CentroidColor = PackCIELABToRGBA(Cluster->Centroid);
                 while(ClusterPixelWidth--)
                 {
                     // @Robustness: Add a counter of how many pixels we've
@@ -421,8 +451,8 @@ main(int ArgCount, char **Args)
                     *Row++ = CentroidColor;
                 }
             }
-            
-            bitmap Palette = MakeEmptyBitmap(PaletteWidth, PaletteHeight);
+   
+            bitmap Palette = AllocateBitmap(PaletteWidth, PaletteHeight);
             u8 *DestRow = (u8 *)Palette.Memory;
             for(int Y = 0;
                 Y < PaletteHeight;
@@ -439,7 +469,8 @@ main(int ArgCount, char **Args)
                 
                 DestRow += Palette.Pitch;
             }
-            ExportBMP(Palette, "palette.bmp");
+
+            ExportBMP(Palette, Config.DestPath);
         }
         else
         {
@@ -448,7 +479,7 @@ main(int ArgCount, char **Args)
     }
     else
     {
-        fprintf(stderr, "%s [image path] [cluster count] [seed] [sort type]\n", Args[0]);
+        fprintf(stderr, "Usage: %s [image path] [cluster count] [seed] [sort type] [iteration count]\n", Args[0]);
     }
     
     return(0);
