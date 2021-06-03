@@ -1,230 +1,283 @@
-#ifndef PALETTIZE_MATH_H
-#define PALETTIZE_MATH_H
+#if !defined(PALETTIZE_MATH_H)
 
-#include <float.h>
 #include <math.h>
 
-const f32 F32_MAX = FLT_MAX;
-
-struct Vector3 {
+struct v3
+{
     f32 x, y, z;
 };
 
-struct Matrix3 {
-    Vector3 x_axis;
-    Vector3 y_axis;
-    Vector3 z_axis;
+struct m3x3
+{
+    v3 XAxis;
+    v3 YAxis;
+    v3 ZAxis;
 };
 
-inline Vector3 V3(f32 x, f32 y, f32 z) {
-    Vector3 result;
-    result.x = x;
-    result.y = y;
-    result.z = z;
+inline v3
+V3(f32 X, f32 Y, f32 Z)
+{
+    v3 Result;
+    Result.x = X;
+    Result.y = Y;
+    Result.z = Z;
     
-    return(result);
+    return(Result);
 }
 
-inline Vector3 V3i(int x, int y, int z) {
-    Vector3 result = V3((f32)x, (f32)y, (f32)z);
+inline v3
+V3i(int X, int Y, int Z)
+{
+    v3 Result = V3((f32)X, (f32)Y, (f32)Z);
     
-    return(result);
+    return(Result);
 }
 
 // 
 // Scalar operations
 // 
 
-inline f32 clamp(f32 min, f32 s, f32 max) {
-    f32 result = s;
-
-    if (result < min) {
-        result = min;
-    } else if(result > max) {
-        result = max;
+inline f32
+Clamp(f32 Min, f32 S, f32 Max)
+{
+    f32 Result = S;
+    if(Result < Min)
+    {
+        Result = Min;
+    }
+    else if(Result > Max)
+    {
+        Result = Max;
     }
 
-    return(result);
+    return(Result);
 }
 
-inline int clampi(int min, int s, int max) {
-    int result = (int)clamp((f32)min, (f32)s, (f32)max);
+inline int
+Clampi(int Min, int S, int Max)
+{
+    int Result = (int)Clamp((f32)Min, (f32)S, (f32)Max);
     
-    return(result);
+    return(Result);
 }
 
-inline f32 clamp01(f32 s) {
-    f32 result = clamp(0.0f, s, 1.0f);
+inline f32
+Clamp01(f32 S)
+{
+    f32 Result = Clamp(0.0f, S, 1.0f);
     
-    return(result);
+    return(Result);
 }
 
-inline f32 cube(f32 s) {
-    f32 result = s*s*s;
+inline f32
+Cube(f32 S)
+{
+    f32 Result = S*S*S;
 
-    return(result);
+    return(Result);
 }
 
-inline f32 cube_root(f32 s) {
-    f32 result = cbrtf(s);
+inline f32
+CubeRoot(f32 S)
+{
+    f32 Result = cbrtf(S);
     
-    return(result);
+    return(Result);
 }
 
-inline f32 pow(f32 x, f32 y) {
-    f32 result = powf(x, y);
+inline f32
+Pow(f32 X, f32 Y)
+{
+    f32 Result = powf(X, Y);
     
-    return(result);
+    return(Result);
 }
 
-inline f32 round(f32 s) {
-    f32 result = roundf(s);
+inline f32
+Round(f32 S)
+{
+    f32 Result = roundf(S);
 
-    return(result);
+    return(Result);
 }
 
-inline int round_to_int(f32 s) {
-    int result = (int)round(s);
+inline int
+RoundToInt(f32 S)
+{
+    int Result = (int)Round(S);
     
-    return(result);
+    return(Result);
 }
 
-inline u32 round_to_u32(f32 s) {
-    u32 result = (u32)round(s);
+inline u32
+RoundToU32(f32 S)
+{
+    u32 Result = (u32)Round(S);
     
-    return(result);
+    return(Result);
 }
 
-inline f32 safe_ratio_n(f32 dividend, f32 divisor, f32 n) {
-    f32 result = n;
-
-    if (divisor != 0.0f) {
-        result = (dividend / divisor);
+inline f32
+SafeRatioN(f32 Dividend, f32 Divisor, f32 N)
+{
+    f32 Result = N;
+    if(Divisor != 0.0f)
+    {
+        Result = (Dividend / Divisor);
     }
 
-    return(result);
+    return(Result);
 }
 
-inline f32 safe_ratio_0(f32 dividend, f32 divisor) {
-    f32 result = safe_ratio_n(dividend, divisor, 0.0f);
+inline f32
+SafeRatio0(f32 Dividend, f32 Divisor)
+{
+    f32 Result = SafeRatioN(Dividend, Divisor, 0.0f);
     
-    return(result);
+    return(Result);
 }
 
-inline f32 square(f32 s) {
-    f32 result = s*s;
+inline f32
+Square(f32 S)
+{
+    f32 Result = S*S;
     
-    return(result);
+    return(Result);
 }
 
-inline f32 square_root(f32 s) {
-    f32 result = sqrtf(s);
+inline f32
+SquareRoot(f32 S)
+{
+    f32 Result = sqrtf(S);
     
-    return(result);
+    return(Result);
 }
 
 // 
-// Vector3 operations
+// v3 operations
 // 
 
-inline Vector3 operator+(Vector3 a, Vector3 b) {
-    Vector3 result;
-    result.x = a.x + b.x;
-    result.y = a.y + b.y;
-    result.z = a.z + b.z;
+inline v3
+operator+(v3 A, v3 B)
+{
+    v3 Result;
+    Result.x = A.x + B.x;
+    Result.y = A.y + B.y;
+    Result.z = A.z + B.z;
     
-    return(result);
+    return(Result);
 }
 
-inline Vector3 operator-(Vector3 a, Vector3 b) {
-    Vector3 result;
-    result.x = a.x - b.x;
-    result.y = a.y - b.y;
-    result.z = a.z - b.z;
+inline v3
+operator-(v3 A, v3 B)
+{
+    v3 Result;
+    Result.x = A.x - B.x;
+    Result.y = A.y - B.y;
+    Result.z = A.z - B.z;
     
-    return(result);
+    return(Result);
 }
 
-inline Vector3 operator*(Vector3 a, f32 s) {
-    Vector3 result;
-    result.x = a.x*s;
-    result.y = a.y*s;
-    result.z = a.z*s;
+inline v3
+operator*(v3 A, f32 S)
+{
+    v3 Result;
+    Result.x = A.x*S;
+    Result.y = A.y*S;
+    Result.z = A.z*S;
     
-    return(result);
+    return(Result);
 }
 
-inline void operator+=(Vector3 &a, Vector3 b) {
-    a = a + b;
+inline void
+operator+=(v3 &A, v3 B)
+{
+    A = A + B;
 }
 
-inline void operator*=(Vector3 &a, f32 s) {
-    a = a*s;
+inline void
+operator*=(v3 &A, f32 S)
+{
+    A = A*S;
 }
 
-inline f32 dot(Vector3 a, Vector3 b) {
-    f32 result = ((a.x*b.x) +
-                  (a.y*b.y) +
-                  (a.z*b.z));
-    return(result);
+inline f32
+Dot(v3 A, v3 B)
+{
+    f32 Result = ((A.x*B.x) +
+                  (A.y*B.y) +
+                  (A.z*B.z));
+    return(Result);
 }
 
-inline f32 length_squared(Vector3 V) {
-    f32 result = dot(V, V);
+inline f32
+LengthSquared(v3 V)
+{
+    f32 Result = Dot(V, V);
     
-    return(result);
+    return(Result);
 }
 
-inline f32 linear_rgb_to_srgb(f32 a);
-inline Vector3 linear_rgb_to_srgb(Vector3 a) {
-    Vector3 result;
-    result.x = linear_rgb_to_srgb(a.x);
-    result.y = linear_rgb_to_srgb(a.y);
-    result.z = linear_rgb_to_srgb(a.z);
+inline f32 LinearRGBTosRGB(f32 A);
+inline v3
+LinearRGBTosRGB(v3 A)
+{
+    v3 Result;
+    Result.x = LinearRGBTosRGB(A.x);
+    Result.y = LinearRGBTosRGB(A.y);
+    Result.z = LinearRGBTosRGB(A.z);
     
-    return(result);
+    return(Result);
 }
 
-inline u32 pack_rgba(Vector3 a) {
-    u32 result = ((round_to_u32(a.x*255.0f) << 0) |
-                  (round_to_u32(a.y*255.0f) << 8) |
-                  (round_to_u32(a.z*255.0f) << 16) |
+inline u32
+PackRGBA(v3 A)
+{
+    u32 Result = ((RoundToU32(A.x*255.0f) << 0) |
+                  (RoundToU32(A.y*255.0f) << 8) |
+                  (RoundToU32(A.z*255.0f) << 16) |
                   (255 << 24));
-    return(result);
+    return(Result);
 }
 
-inline f32 srgb_to_linear_rgb(f32 channel);
-inline Vector3 srgb_to_linear_rgb(Vector3 a) {
-    Vector3 result;
-    result.x = srgb_to_linear_rgb(a.x);
-    result.y = srgb_to_linear_rgb(a.y);
-    result.z = srgb_to_linear_rgb(a.z);
+inline f32 sRGBToLinearRGB(f32 Channel);
+inline v3
+sRGBToLinearRGB(v3 A)
+{
+    v3 Result;
+    Result.x = sRGBToLinearRGB(A.x);
+    Result.y = sRGBToLinearRGB(A.y);
+    Result.z = sRGBToLinearRGB(A.z);
     
-    return(result);
+    return(Result);
 }
 
-inline Vector3 unpack_rgba(u32 c) {
-    f32 inv_255 = (1.0f / 255.0f);
-
-    Vector3 result;
-    result.x = ((c >> 0) & 0xFF)*inv_255;
-    result.y = ((c >> 8) & 0xFF)*inv_255;
-    result.z = ((c >> 16) & 0xFF)*inv_255;
+inline v3
+UnpackRGBA(u32 C)
+{
+    f32 Inv255 = (1.0f / 255.0f);
+    v3 Result;
+    Result.x = (((C >> 0) & 0xFF)*Inv255);
+    Result.y = (((C >> 8) & 0xFF)*Inv255);
+    Result.z = (((C >> 16) & 0xFF)*Inv255);
     
-    return(result);
+    return(Result);
 }
 
 // 
-// Matrix3 operations
+// m3x3 operations
 // 
 
-inline Vector3 operator*(Matrix3 m, Vector3 v) {
-    Vector3 result;
-    result.x = dot(V3(m.x_axis.x, m.y_axis.x, m.z_axis.x), v);
-    result.y = dot(V3(m.x_axis.y, m.y_axis.y, m.z_axis.y), v);
-    result.z = dot(V3(m.x_axis.z, m.y_axis.z, m.z_axis.z), v);
+inline v3
+operator*(m3x3 M, v3 V)
+{
+    v3 Result;
+    Result.x = Dot(V3(M.XAxis.x, M.YAxis.x, M.ZAxis.x), V);
+    Result.y = Dot(V3(M.XAxis.y, M.YAxis.y, M.ZAxis.y), V);
+    Result.z = Dot(V3(M.XAxis.z, M.YAxis.z, M.ZAxis.z), V);
     
-    return(result);
+    return(Result);
 }
 
 // 
@@ -232,119 +285,150 @@ inline Vector3 operator*(Matrix3 m, Vector3 v) {
 // 
 
 // White point coords for Illuminant D65
-const f32 COORD_Xn = 0.950470f;
-const f32 COORD_Yn = 1.0f;
-const f32 COORD_Zn = 1.088830f;
+#define Xn 0.950470f
+#define Yn 1.0f
+#define Zn 1.088830f
 
-inline f32 inv_ft(f32 t) {
-    f32 result;
-
-    f32 sigma = (6.0f / 29.0f);
-    if (t > sigma) {
-        result = cube(t);
-    } else {
-        result = ((3.0f*square(sigma))*(t - (4.0f / 29.0f)));
+inline f32
+InvFt(f32 t)
+{
+    f32 Result;
+    f32 Sigma = (6.0f / 29.0f);
+    if(t > Sigma)
+    {
+        Result = Cube(t);
+    }
+    else
+    {
+        Result = ((3.0f*Square(Sigma))*(t - (4.0f / 29.0f)));
     }
     
-    return(result);
+    return(Result);
 }
 
-inline Vector3 cielab_to_ciexyz(Vector3 a) {
-    Vector3 result;
-    result.x = COORD_Xn*inv_ft(((a.x + 16.0f) / 116.0f) + (a.y / 500.0f));
-    result.y = COORD_Yn*inv_ft((a.x + 16.0f) / 116.0f);
-    result.z = COORD_Zn*inv_ft(((a.x + 16.0f) / 116.0f) - (a.z / 200.0f));
+inline v3
+CIELABToCIEXYZ(v3 A)
+{
+    v3 Result;
+    Result.x = (Xn*InvFt(((A.x + 16.0f) / 116.0f) + (A.y / 500.0f)));
+    Result.y = (Yn*InvFt((A.x + 16.0f) / 116.0f));
+    Result.z = (Zn*InvFt(((A.x + 16.0f) / 116.0f) - (A.z / 200.0f)));
     
-    return(result);
+    return(Result);
 }
 
-inline f32 ft(f32 t) {
-    f32 result;
-
-    f32 sigma = 6.0f / 29.0f;
-    if (t > cube(sigma)) {
-        result = cube_root(t);
-    } else {
-        result = ((t / (3.0f*square(sigma))) + (4.0f / 29.0f));
+inline f32
+Ft(f32 t)
+{
+    f32 Result;
+    f32 Sigma = (6.0f / 29.0f);
+    if(t > Cube(Sigma))
+    {
+        Result = CubeRoot(t);
+    }
+    else
+    {
+        Result = ((t / (3.0f*Square(Sigma))) + (4.0f / 29.0f));
     }
     
-    return(result);
+    return(Result);
 }
 
-inline Vector3 ciexyz_to_cielab(Vector3 a) {
-    Vector3 result;
-    result.x = (116.0f*ft(a.y / COORD_Yn) - 16.0f);
-    result.y = (500.0f*(ft(a.x / COORD_Xn) - ft(a.y / COORD_Yn)));
-    result.z = (200.0f*(ft(a.y / COORD_Yn) - ft(a.z / COORD_Zn)));
+inline v3
+CIEXYZToCIELAB(v3 A)
+{
+    v3 Result;
+    Result.x = (116.0f*Ft(A.y / Yn) - 16.0f);
+    Result.y = (500.0f*(Ft(A.x / Xn) - Ft(A.y / Yn)));
+    Result.z = (200.0f*(Ft(A.y / Yn) - Ft(A.z / Zn)));
     
-    return(result);
+    return(Result);
 }
 
-inline Vector3 ciexyz_to_linear_rgb(Vector3 a) {
-    Matrix3 matrix;
-    matrix.x_axis = V3(3.2404542f, -0.9692660f, 0.0556434f);
-    matrix.y_axis = V3(-1.5371385f, 1.8760108f, -0.2040259f);
-    matrix.z_axis = V3(-0.4985314f, 0.0415560f, 1.0572252f);
-    Vector3 result = matrix*a;
+inline v3
+CIEXYZToLinearRGB(v3 A)
+{
+    m3x3 Matrix;
+    Matrix.XAxis = V3(3.2404542f, -0.9692660f, 0.0556434f);
+    Matrix.YAxis = V3(-1.5371385f, 1.8760108f, -0.2040259f);
+    Matrix.ZAxis = V3(-0.4985314f, 0.0415560f, 1.0572252f);
+    v3 Result = (Matrix*A);
     
-    return(result);
+    return(Result);
 }
 
-inline Vector3 linear_rgb_to_ciexyz(Vector3 a) {
-    Matrix3 matrix;
-    matrix.x_axis = V3(0.4124564f, 0.2126729f, 0.0193339f);
-    matrix.y_axis = V3(0.3575761f, 0.7151522f, 0.1191920f);
-    matrix.z_axis = V3(0.1804375f, 0.0721750f, 0.9503041f);
-    Vector3 result = matrix*a;
+inline v3
+LinearRGBToCIEXYZ(v3 A)
+{
+    m3x3 Matrix;
+    Matrix.XAxis = V3(0.4124564f, 0.2126729f, 0.0193339f);
+    Matrix.YAxis = V3(0.3575761f, 0.7151522f, 0.1191920f);
+    Matrix.ZAxis = V3(0.1804375f, 0.0721750f, 0.9503041f);
+    v3 Result = Matrix*A;
     
-    return(result);
+    return(Result);
 }
 
-inline f32 linear_rgb_to_srgb(f32 a) {
-    a = clamp01(a);
+inline f32
+LinearRGBTosRGB(f32 A)
+{
+    A = Clamp01(A);
     
-    f32 result;
-    if (a <= 0.0031308f) {
-        result = 12.92f*a;
-    } else {
-        result = ((1.055f*pow(a, (1.0f / 2.4f))) - 0.055f);
+    f32 Result;
+    if(A <= 0.0031308f)
+    {
+        Result = 12.92f*A;
+    }
+    else
+    {
+        Result = ((1.055f*Pow(A, (1.0f / 2.4f))) - 0.055f);
     }
     
-    return(result);
+    return(Result);
 }
 
-inline u32 pack_cielab_to_rgba(Vector3 a) {
-    Vector3 cielab = a;
-    Vector3 ciexyz = cielab_to_ciexyz(cielab);
-    Vector3 linear_rgb = ciexyz_to_linear_rgb(ciexyz);
-    Vector3 srgb = linear_rgb_to_srgb(linear_rgb);
-    u32 result = pack_rgba(srgb);
+inline u32
+PackCIELABToRGBA(v3 A)
+{
+    v3 CIELAB = A;
+    v3 CIEXYZ = CIELABToCIEXYZ(CIELAB);
+    v3 LinearRGB = CIEXYZToLinearRGB(CIEXYZ);
+    v3 sRGB = LinearRGBTosRGB(LinearRGB);
+    u32 Result = PackRGBA(sRGB);
     
-    return(result);
+    return(Result);
 }
 
-inline f32 srgb_to_linear_rgb(f32 a) {
-    a = clamp01(a);
+inline f32
+sRGBToLinearRGB(f32 A)
+{
+    A = Clamp01(A);
     
-    f32 result;
-    if (a <= 0.04045f) {
-        result = (a / 12.92f);
-    } else {
-        result = pow(((a + 0.055f) / 1.055f), 2.4f);
+    f32 Result;
+    if(A <= 0.04045f)
+    {
+        Result = (A / 12.92f);
+    }
+    else
+    {
+        Result = Pow(((A + 0.055f) / 1.055f), 2.4f);
     }
     
-    Assert((0.0f <= result) && (result <= 1.0f));
+    Assert((0.0f <= Result) && (Result <= 1.0f));
     
-    return(result);
+    return(Result);
 }
 
-inline Vector3 unpack_rgba_to_cielab(u32 a) {
-    Vector3 result_rbga = unpack_rgba(a);
-    Vector3 result_linear_rgb = srgb_to_linear_rgb(result_rbga);
-    Vector3 result_ciexyz = linear_rgb_to_ciexyz(result_linear_rgb);
-    Vector3 result_cielab = ciexyz_to_cielab(result_ciexyz);
+inline v3
+UnpackRGBAToCIELAB(u32 A)
+{
+    v3 ResultsRGB = UnpackRGBA(A);
+    v3 ResultLinearRGB = sRGBToLinearRGB(ResultsRGB);
+    v3 ResultCIEXYZ = LinearRGBToCIEXYZ(ResultLinearRGB);
+    v3 ResultCIELAB = CIEXYZToCIELAB(ResultCIEXYZ);
     
-    return(result_cielab);
+    return(ResultCIELAB);
 }
 
+#define PALETTIZE_MATH_H
 #endif

@@ -1,17 +1,19 @@
-#ifndef PALETTIZE_H
-#define PALETTIZE_H
+#if !defined(PALETTIZE_H)
 
+#include <float.h>
 #include <stdint.h>
 
 // @Production: Make this a stub based on a macro or something
 #define Assert(Expression) if(!(Expression)) {*(int *)0 = 0;}
-#define Invalid_Code_Path Assert(!"InvalidCodePath")
-#define Invalid_Default_Case default: {InvalidCodePath;} break
+#define InvalidCodePath Assert(!"InvalidCodePath")
+#define InvalidDefaultCase default: {InvalidCodePath;} break
 
-#define Array_Count(array) (sizeof((array)) / sizeof((array)[0]))
+#define ArrayCount(Array) (sizeof((Array)) / sizeof((Array)[0]))
 
 #define Maximum(A, B) ((A) > (B) ? (A) : (B))
 #define Minimum(A, B) ((A) < (B) ? (A) : (B))
+
+#define F32Max FLT_MAX
 
 typedef int32_t s32;
 typedef s32 b32;
@@ -28,75 +30,83 @@ typedef float f32;
 #include "palettize_random.h"
 #include "palettize_string.h"
 
-enum Sort_Type {
-    SORT_TYPE_WEIGHT,
-    SORT_TYPE_RED,
-    SORT_TYPE_GREEN,
-    SORT_TYPE_BLUE,
+enum sort_type
+{
+    SortType_Weight,
+    SortType_Red,
+    SortType_Green,
+    SortType_Blue,
 };
 
-struct Palettize_Config {
-    char *source_path;
-    char *dest_path;
+struct palettize_config
+{
+    char *SourcePath;
+    char *DestPath;
 
-    u32 seed;
+    u32 Seed;
     
-    int num_clusters;
-    int iteration_count;
+    int ClusterCount;
+    int IterationCount;
     
-    Sort_Type sort_type;
+    sort_type SortType;
 };
 
-#define Get_Bitmap_Ptr(Bitmap, X, Y) ((u8 *)(Bitmap).memory + (sizeof(u32)*(X)) + ((Y)*(Bitmap).pitch))
-struct Bitmap {
-    void *memory;
-    int width;
-    int height;
-    umm pitch;
+#define GetBitmapPtr(Bitmap, X, Y) ((u8 *)(Bitmap).Memory + (sizeof(u32)*(X)) + ((Y)*(Bitmap).Pitch))
+struct bitmap
+{
+    void *Memory;
+    int Width;
+    int Height;
+    umm Pitch;
 };
 
-struct Cluster {
-    Vector3 centroid;
+struct cluster
+{
+    v3 Centroid;
     
-    Vector3 observation_sum;
-    int num_observations;
+    v3 ObservationSum;
+    int ObservationCount;
     
-    int total_observation_count;
+    int TotalObservationCount;
 };
-struct Cluster_Group {
-    Random_Series entropy;
+struct cluster_group
+{
+    random_series Entropy;
     
-    Bitmap bitmap;
+    bitmap Bitmap;
     
-    int num_clusters;
-    Cluster *clusters;
+    int ClusterCount;
+    cluster *Clusters;
     
     // @TODO: Remove this, since it can be computed from the
-    // total_observation_count maintained in each cluster
-    int total_observation_count;
+    // TotalObservationCount maintained in each cluster
+    int TotalObservationCount;
 };
 
 #pragma pack(push, 1)
 #define BI_RGB 0x0000
-struct Bitmap_Header {
-    u16 type;
-    u32 file_size;
-    u16 reserved1;
-    u16 reserved2;
-    u32 off_bits;
+struct bitmap_header
+{
+    u16 Type;
+    u32 FileSize;
+    u16 Reserved1;
+    u16 Reserved2;
+    u32 OffBits;
     
-    u32 size;
-    s32 width;
-    s32 height;
-    u16 planes;
-    u16 bit_count;
-    u32 compression;
-    u32 size_image;
-    s32 x_pels_per_meter;
-    s32 y_pels_per_meter;
-    u32 clr_used;
-    u32 clr_important;
+    u32 Size;
+    s32 Width;
+    s32 Height;
+    u16 Planes;
+    u16 BitCount;
+    u32 Compression;
+    u32 SizeImage;
+    s32 XPelsPerMeter;
+    s32 YPelsPerMeter;
+    u32 ClrUsed;
+    u32 ClrImportant;
 };
+
 #pragma pack(pop)
 
+#define PALETTIZE_H
 #endif
