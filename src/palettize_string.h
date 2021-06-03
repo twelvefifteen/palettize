@@ -1,44 +1,41 @@
-#if !defined(PALETTIZE_STRING_H)
+#ifndef PALETTIZE_STRING_H
+#define PALETTIZE_STRING_H
 
-inline char
-FlipCase(char C)
-{
-    char Result = '\0';
-    if(('a' <= C) && (C <= 'z'))
+inline char flip_case(char c) {
+    char result = '\0';
+
+    if(('a' <= c) && (c <= 'z'))
     {
-        Result = ((C - 'a') + 'A');
+        result = ((c - 'a') + 'A');
     }
-    else if(('A' <= C) && (C <= 'Z'))
+    else if(('A' <= c) && (c <= 'Z'))
     {
-        Result = ((C - 'A') + 'a');
+        result = ((c - 'A') + 'a');
+    }
+    else
+    {
+        Invalid_Code_Path;
     }
     
-    return(Result);
+    return(result);
 }
 
-inline b32
-StringsMatch(char *A, char *B, b32 CaseSensitive = true)
-{
-    while(*A &&
-          *B)
-    {
-        if((*A == *B) ||
-           ((CaseSensitive == false) &&
-            (*A == FlipCase(*B))))
-        {
-            A++;
-            B++;
-        }
-        else
-        {
+inline b32 strings_match(char *a, char *b, b32 case_sensitive = true) {
+    while (*a &&
+          *b) {
+        if ((*a == *b) ||
+            ((case_sensitive == false) &&
+             (*a == flip_case(*b)))) {
+            a++;
+            b++;
+        } else {
             break;
         }
     }
     
-    b32 Result = *A == *B;
+    b32 result = *a == *b;
 
-    return(Result);
+    return(result);
 }
 
-#define PALETTIZE_STRING_H
 #endif
