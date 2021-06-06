@@ -166,7 +166,7 @@ ClearClusterObservations(cluster *Cluster)
 }
 
 static void
-SeedCluster(cluster_group *ClusterGroup, cluster *Cluster)
+SeedCluster(kmeans_context *ClusterGroup, cluster *Cluster)
 {
     u32 RandomSampleX =
         RandomU32Between(&ClusterGroup->Entropy, 0, (u32)(ClusterGroup->Bitmap.Width - 1));
@@ -177,10 +177,10 @@ SeedCluster(cluster_group *ClusterGroup, cluster *Cluster)
     Cluster->Centroid = UnpackRGBAToCIELAB(RandomSample);
 }
 
-static cluster_group *
+static kmeans_context *
 AllocateClusterGroup(bitmap Bitmap, u32 Seed, int ClusterCount)
 {
-    cluster_group *ClusterGroup = (cluster_group *)malloc(sizeof(cluster_group));
+    kmeans_context *ClusterGroup = (kmeans_context *)malloc(sizeof(kmeans_context));
     
     ClusterGroup->Entropy = SeedSeries(Seed);
     ClusterGroup->Bitmap = Bitmap;
@@ -202,7 +202,7 @@ AllocateClusterGroup(bitmap Bitmap, u32 Seed, int ClusterCount)
 }
 
 static u32
-AddObservation(cluster_group *ClusterGroup, v3 C)
+AddObservation(kmeans_context *ClusterGroup, v3 C)
 {
     f32 ClosestDistSquared = F32Max;
     cluster* ClosestCluster = 0;
@@ -235,7 +235,7 @@ AddObservation(cluster_group *ClusterGroup, v3 C)
 }
 
 static void
-CommitObservations(cluster_group *ClusterGroup)
+CommitObservations(kmeans_context *ClusterGroup)
 {
     for(int ClusterIndex = 0;
         ClusterIndex < ClusterGroup->ClusterCount;
@@ -320,7 +320,7 @@ main(int ArgCount, char **Args)
         bitmap Bitmap = LoadScaledBitmap(Config.SourcePath, 100.0f);
         if(Bitmap.Memory)
         {
-            cluster_group *ClusterGroup =
+            kmeans_context *Context =
                 AllocateClusterGroup(Bitmap, Config.Seed, Config.ClusterCount);
             
             bitmap LastClusterIndexBuffer = AllocateBitmap(Bitmap.Width, Bitmap.Height);
@@ -348,7 +348,7 @@ main(int ArgCount, char **Args)
                         u32 Texel = *TexelPtr;
                         
                         v3 TexelV3 = UnpackRGBAToCIELAB(Texel);
-                        u32 ClusterIndex = AddObservation(ClusterGroup,
+                        u32 ClusterIndex = AddObservation(Context,
                                                           TexelV3);
 
                         u32 *PrevClusterIndexPtr =
@@ -368,7 +368,7 @@ main(int ArgCount, char **Args)
                     Row += Bitmap.Pitch;
                 }
                 
-                CommitObservations(ClusterGroup);
+                CommitObservations(Context);
                 if((Iteration > 0) &&
                    !IndexChangeOccurred)
                 {
@@ -402,17 +402,17 @@ main(int ArgCount, char **Args)
             }
 
             for(int Outer = 0;
-                Outer < ClusterGroup->ClusterCount;
+                Outer < Context->ClusterCount;
                 ++Outer)
             {
                 b32 SwapOccurred = false;
                 
                 for(int Inner = 0;
-                    Inner < (ClusterGroup->ClusterCount - 1);
+                    Inner < (Context->ClusterCount - 1);
                     ++Inner)
                 {
-                    cluster *ClusterA = ClusterGroup->Clusters + Inner;
-                    cluster *ClusterB = ClusterGroup->Clusters + Inner + 1;
+                    cluster *ClusterA = Context->Clusters + Inner;
+                    cluster *ClusterB = Context->Clusters + Inner + 1;
                     
                     if(Config.SortType == SortType_Weight)
                     {
@@ -457,13 +457,13 @@ main(int ArgCount, char **Args)
             
             u32 *Row = (u32 *)ScanLine;
             for(int ClusterIndex = 0;
-                ClusterIndex < ClusterGroup->ClusterCount;
+                ClusterIndex < Context->ClusterCount;
                 ClusterIndex++)
             {
-                cluster *Cluster = ClusterGroup->Clusters + ClusterIndex;
+                cluster *Cluster = Context->Clusters + ClusterIndex;
 
                 f32 Weight = SafeRatio0((f32)Cluster->TotalObservationCount,
-                                        (f32)ClusterGroup->TotalObservationCount);
+                                        (f32)Context->TotalObservationCount);
                 int ClusterPixelWidth = RoundToInt(Weight*PaletteWidth);
 
                 u32 CentroidColor = PackCIELABToRGBA(Cluster->Centroid);

@@ -67,7 +67,7 @@ struct cluster
     
     int TotalObservationCount;
 };
-struct cluster_group
+struct kmeans_context
 {
     random_series Entropy;
     
