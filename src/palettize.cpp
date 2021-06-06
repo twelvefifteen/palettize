@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <time.h>
 
 #pragma warning(push, 0)
 #define STB_IMAGE_IMPLEMENTATION
@@ -70,16 +71,6 @@ ParseCommandLine(int ArgCount, char **Args)
 }
 
 static bitmap
-LoadBitmap(char *Path)
-{
-    bitmap Result;
-    Result.Memory = stbi_load(Path, &Result.Width, &Result.Height, 0, 4);
-    Result.Pitch = sizeof(u32)*Result.Width;
-    
-    return(Result);
-}
-
-static bitmap
 AllocateBitmap(int Width, int Height)
 {
     bitmap Result;
@@ -88,6 +79,35 @@ AllocateBitmap(int Width, int Height)
     Result.Height = Height;
     Result.Pitch = sizeof(u32)*Width;
     
+    return(Result);
+}
+
+static bitmap
+LoadScaledBitmap(char *Path, f32 MaxDim)
+{
+    bitmap Result = {};
+
+    int SourceWidth;
+    int SourceHeight;
+    void *SourceMemory = stbi_load(Path, &SourceWidth, &SourceHeight, 0, sizeof(u32));
+    if(SourceMemory)
+    {
+        f32 ScaleFactor = MaxDim / (f32)Maximum(SourceWidth, SourceHeight);
+        int ScaledWidth = RoundToInt(SourceWidth*ScaleFactor);
+        int ScaledHeight = RoundToInt(SourceHeight*ScaleFactor);
+
+        Result.Width = ScaledWidth;
+        Result.Height = ScaledHeight;
+        Result.Pitch = sizeof(u32)*ScaledWidth;
+        Result.Memory = malloc(sizeof(u32)*ScaledWidth*ScaledHeight);
+
+        stbi_image_free(SourceMemory);
+    }
+    else
+    {
+        fprintf(stderr, "stb_image failed: %s\n", stbi_failure_reason());
+    }
+
     return(Result);
 }
 
@@ -295,16 +315,11 @@ main(int ArgCount, char **Args)
     {
         palettize_config Config = ParseCommandLine(ArgCount, Args);
         
-        bitmap SourceBitmap = LoadBitmap(Config.SourcePath);
-        if(SourceBitmap.Memory)
+        // To improve performance, the source image is scaled such that its
+        // largest dimension has a value of 100 pixels
+        bitmap Bitmap = LoadScaledBitmap(Config.SourcePath, 100.0f);
+        if(Bitmap.Memory)
         {
-            // To improve performance, the source image is resized so that its
-            // largest dimension has a value of 100 pixels
-            f32 DimFactor = 100.0f / (f32)Maximum(SourceBitmap.Width, SourceBitmap.Height);
-            bitmap Bitmap = AllocateBitmap(RoundToInt(SourceBitmap.Width*DimFactor),
-                                           RoundToInt(SourceBitmap.Height*DimFactor));
-            ResizeBitmap(SourceBitmap, Bitmap);
-            
             cluster_group *ClusterGroup =
                 AllocateClusterGroup(Bitmap, Config.Seed, Config.ClusterCount);
             
@@ -483,7 +498,7 @@ main(int ArgCount, char **Args)
         }
         else
         {
-            fprintf(stderr, "stb_image failed: %s\n", stbi_failure_reason());
+            fprintf(stderr, "Error: Memory allocation failed for source bitmap\n");
         }
     }
     else
