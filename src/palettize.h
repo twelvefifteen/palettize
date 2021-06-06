@@ -1,10 +1,11 @@
 #if !defined(PALETTIZE_H)
 
+#include <assert.h>
 #include <float.h>
 #include <stdint.h>
 
-// @Production: Make this a stub based on a macro or something
-#define Assert(Expression) if(!(Expression)) {*(int *)0 = 0;}
+// @Production: Make Assert expand to nothing based on a macro
+#define Assert assert
 #define InvalidCodePath Assert(!"InvalidCodePath")
 #define InvalidDefaultCase default: {InvalidCodePath;} break
 
@@ -41,14 +42,11 @@ enum sort_type
 struct palettize_config
 {
     char *SourcePath;
-    char *DestPath;
-
-    u32 Seed;
-    
     int ClusterCount;
-    int IterationCount;
-    
+    u32 Seed;
     sort_type SortType;
+    int IterationCount;
+    char *DestPath;
 };
 
 #define GetBitmapPtr(Bitmap, X, Y) ((u8 *)(Bitmap).Memory + (sizeof(u32)*(X)) + ((Y)*(Bitmap).Pitch))

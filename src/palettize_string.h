@@ -4,6 +4,7 @@ inline char
 FlipCase(char C)
 {
     char Result = '\0';
+
     if(('a' <= C) && (C <= 'z'))
     {
         Result = ((C - 'a') + 'A');
