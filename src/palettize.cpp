@@ -12,9 +12,18 @@ static palettize_config
 ParseCommandLine(int ArgCount, char **Args)
 {
     palettize_config Config = {};
+
+    // @Refactor: Should this be abstracted into a helper?
+    time_t Timestamp = time(0);
+    tm *Time = gmtime(&Timestamp);
+    u32 Seed = (Time->tm_year +
+                Time->tm_mon*Time->tm_mday -
+                Time->tm_hour*Time->tm_min +
+                Time->tm_sec);
+
     Config.SourcePath = 0;
     Config.ClusterCount = 5;
-    Config.Seed = 0xFACADE;
+    Config.Seed = Seed;
     Config.SortType = SortType_Weight;
     Config.IterationCount = 300;
     Config.DestPath = "palette.bmp";
@@ -479,7 +488,7 @@ main(int ArgCount, char **Args)
     }
     else
     {
-        fprintf(stderr, "Usage: %s [image path] [cluster count] [seed] [sort type] [iteration count]\n", Args[0]);
+        fprintf(stderr, "Usage: %s [source path] [cluster count] [seed] [sort type] [iteration count] [dest path]\n", Args[0]);
     }
     
     return(0);
