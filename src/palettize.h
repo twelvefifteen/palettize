@@ -1,10 +1,9 @@
 #if !defined(PALETTIZE_H)
 
 #include <assert.h>
-#include <float.h>
 #include <stdint.h>
 
-// @Production: Make Assert expand to nothing based on a macro
+// @Production: Make Assert expand to nothing
 #define Assert assert
 #define InvalidCodePath Assert(!"InvalidCodePath")
 #define InvalidDefaultCase default: {InvalidCodePath;} break
@@ -13,8 +12,6 @@
 
 #define Maximum(A, B) ((A) > (B) ? (A) : (B))
 #define Minimum(A, B) ((A) < (B) ? (A) : (B))
-
-#define F32Max FLT_MAX
 
 typedef int32_t s32;
 typedef s32 b32;
@@ -45,7 +42,6 @@ struct palettize_config
     int ClusterCount;
     u32 Seed;
     sort_type SortType;
-    int IterationCount;
     char *DestPath;
 };
 
@@ -64,21 +60,15 @@ struct cluster
     
     v3 ObservationSum;
     int ObservationCount;
-    
-    int TotalObservationCount;
 };
 struct kmeans_context
 {
+    // @Refactor: Remove this to reduce coupling
     random_series Entropy;
-    
     bitmap Bitmap;
     
     int ClusterCount;
     cluster *Clusters;
-    
-    // @TODO: Remove this, since it can be computed from the
-    // TotalObservationCount maintained in each cluster
-    int TotalObservationCount;
 };
 
 #pragma pack(push, 1)
@@ -103,7 +93,6 @@ struct bitmap_header
     u32 ClrUsed;
     u32 ClrImportant;
 };
-
 #pragma pack(pop)
 
 #define PALETTIZE_H

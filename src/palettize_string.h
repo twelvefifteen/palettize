@@ -7,11 +7,11 @@ FlipCase(char C)
 
     if(('a' <= C) && (C <= 'z'))
     {
-        Result = ((C - 'a') + 'A');
+        Result = (C - 'a') + 'A';
     }
     else if(('A' <= C) && (C <= 'Z'))
     {
-        Result = ((C - 'A') + 'a');
+        Result = (C - 'A') + 'a';
     }
     
     return(Result);
@@ -20,8 +20,7 @@ FlipCase(char C)
 inline b32
 StringsMatch(char *A, char *B, b32 CaseSensitive = true)
 {
-    while(*A &&
-          *B)
+    while(*A && *B)
     {
         if((*A == *B) ||
            ((CaseSensitive == false) &&

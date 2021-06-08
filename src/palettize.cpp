@@ -14,19 +14,18 @@ ParseCommandLine(int ArgCount, char **Args)
 {
     palettize_config Config = {};
 
-    // @Refactor: Should this be abstracted into a helper?
-    time_t Timestamp = time(0);
-    tm *Time = gmtime(&Timestamp);
-    u32 Seed = (Time->tm_year +
-                Time->tm_mon*Time->tm_mday -
-                Time->tm_hour*Time->tm_min +
-                Time->tm_sec);
+    // @Refactor: Abstract this into a helper
+    time_t Time = time(0);
+    tm *TM = gmtime(&Time);
+    u32 Seed = (TM->tm_year +
+                TM->tm_mon*TM->tm_mday +
+                TM->tm_hour*(u32)Cube((f32)TM->tm_min) +
+                (u32)Square((f32)TM->tm_sec)*0xFACADE);
 
     Config.SourcePath = 0;
     Config.ClusterCount = 5;
     Config.Seed = Seed;
     Config.SortType = SortType_Weight;
-    Config.IterationCount = 300;
     Config.DestPath = "palette.bmp";
 
     if(ArgCount > 1)
@@ -35,8 +34,8 @@ ParseCommandLine(int ArgCount, char **Args)
     }
     if(ArgCount > 2)
     {
-        int RequestedClusterCount = atoi(Args[2]);
-        Config.ClusterCount = Clampi(1, RequestedClusterCount, 64);
+        int ClusterCount = atoi(Args[2]);
+        Config.ClusterCount = Clampi(1, ClusterCount, 64);
     }
     if(ArgCount > 3)
     {
@@ -60,14 +59,90 @@ ParseCommandLine(int ArgCount, char **Args)
     }
     if(ArgCount > 5)
     {
-        Config.IterationCount = (int)atoi(Args[5]);
-    }
-    if(ArgCount > 6)
-    {
-        Config.DestPath = Args[6];
+        Config.DestPath = Args[5];
     }
 
     return(Config);
+}
+
+static bitmap
+LoadAndScaleBitmap(char *Path, f32 MaxResizedDim)
+{
+    // @TODO: This desperately needs to be refactored
+
+    bitmap Result = {};
+
+    int SourceWidth;
+    int SourceHeight;
+    void *SourceMemory = stbi_load(Path, &SourceWidth, &SourceHeight, 0, sizeof(u32));
+    if(SourceMemory)
+    {
+        int MaxDim = Maximum(SourceWidth, SourceHeight);
+        if(MaxDim <= MaxResizedDim)
+        {
+            Result.Width = SourceWidth;
+            Result.Height = SourceHeight;
+            Result.Pitch = sizeof(u32)*SourceWidth;
+            Result.Memory = SourceMemory;
+        }
+        else
+        {            
+            f32 ScaleFactor = MaxResizedDim / (f32)MaxDim;
+            int ScaledWidth = RoundToInt(SourceWidth*ScaleFactor);
+            int ScaledHeight = RoundToInt(SourceHeight*ScaleFactor);
+
+            Result.Width = ScaledWidth;
+            Result.Height = ScaledHeight;
+            Result.Pitch = sizeof(u32)*ScaledWidth;
+            Result.Memory = malloc(sizeof(u32)*ScaledWidth*ScaledHeight);
+
+            // @TODO: Make the resize routine below preserve rotation and
+            // orientation
+
+            int MinX = 0;
+            int MinY = 0;
+            int MaxX = Result.Width;
+            int MaxY = Result.Height;
+
+            u8 *Row = (u8 *)GetBitmapPtr(Result, MinX, MinY);
+            for(int Y = MinY;
+                Y < MaxY;
+                Y++)
+            {
+                u32 *TexelPtr = (u32 *)Row;
+                for(int X = MinX;
+                    X < MaxX;
+                    X++)
+                {
+                    f32 U = (f32)X / ((f32)MaxX - 1.0f);
+                    f32 V = (f32)Y / ((f32)MaxY - 1.0f);
+                    Assert((0.0f <= U) && (U <= 1.0f));
+                    Assert((0.0f <= V) && (V <= 1.0f));
+                    
+                    int SampleX = RoundToInt(U*((f32)SourceWidth - 1.0f));
+                    int SampleY = RoundToInt(V*((f32)SourceHeight - 1.0f));
+                    Assert((0 <= SampleX) && (SampleX < SourceWidth));
+                    Assert((0 <= SampleY) && (SampleY < SourceHeight));
+                    
+                    u32 Sample = *(u32 *)((u8 *)SourceMemory +
+                                          (sizeof(u32)*SampleX) +
+                                          (SampleY*sizeof(u32)*SourceWidth));
+                    
+                    *TexelPtr++ = Sample;
+                }
+                
+                Row += Result.Pitch;
+            }
+            
+            stbi_image_free(SourceMemory);
+        }
+    }
+    else
+    {
+        fprintf(stderr, "stb_image failed: %s\n", stbi_failure_reason());
+    }
+
+    return(Result);
 }
 
 static bitmap
@@ -82,97 +157,21 @@ AllocateBitmap(int Width, int Height)
     return(Result);
 }
 
-static bitmap
-LoadScaledBitmap(char *Path, f32 MaxDim)
-{
-    bitmap Result = {};
-
-    int SourceWidth;
-    int SourceHeight;
-    void *SourceMemory = stbi_load(Path, &SourceWidth, &SourceHeight, 0, sizeof(u32));
-    if(SourceMemory)
-    {
-        f32 ScaleFactor = MaxDim / (f32)Maximum(SourceWidth, SourceHeight);
-        int ScaledWidth = RoundToInt(SourceWidth*ScaleFactor);
-        int ScaledHeight = RoundToInt(SourceHeight*ScaleFactor);
-
-        Result.Width = ScaledWidth;
-        Result.Height = ScaledHeight;
-        Result.Pitch = sizeof(u32)*ScaledWidth;
-        Result.Memory = malloc(sizeof(u32)*ScaledWidth*ScaledHeight);
-
-        stbi_image_free(SourceMemory);
-    }
-    else
-    {
-        fprintf(stderr, "stb_image failed: %s\n", stbi_failure_reason());
-    }
-
-    return(Result);
-}
-
-static u32
-SampleNearestNeighbor(bitmap Bitmap, f32 U, f32 V)
-{
-    Assert((0.0f <= U) && (U <= 1.0f));
-    Assert((0.0f <= V) && (V <= 1.0f));
-    
-    int SampleX = RoundToInt(U*((f32)Bitmap.Width - 1.0f));
-    int SampleY = RoundToInt(V*((f32)Bitmap.Height - 1.0f));
-
-    Assert((0 <= SampleX) && (SampleX < Bitmap.Width));
-    Assert((0 <= SampleY) && (SampleY < Bitmap.Height));
-    
-    u32 Sample = *(u32 *)GetBitmapPtr(Bitmap, SampleX, SampleY);
-    
-    return(Sample);
-}
-
 static void
-ResizeBitmap(bitmap Source, bitmap Dest)
-{
-    int MinX = 0;
-    int MinY = 0;
-    int MaxX = Dest.Width;
-    int MaxY = Dest.Height;
-    
-    u8 *Row = (u8 *)GetBitmapPtr(Dest, MinX, MinY);
-    for(int Y = MinY;
-        Y < MaxY;
-        ++Y)
-    {
-        u32* TexelPtr = (u32 *)Row;
-        for(int X = MinX;
-            X < MaxX;
-            ++X)
-        {
-            f32 U = (f32)X / ((f32)MaxX - 1.0f);
-            f32 V = (f32)Y / ((f32)MaxY - 1.0f);
-
-            u32 Sample = SampleNearestNeighbor(Source, U, V);
-            
-            *TexelPtr++ = Sample;
-        }
-        
-        Row += Dest.Pitch;
-    }
-}
-
-static void
-ClearClusterObservations(cluster *Cluster)
+ClearObservations(cluster *Cluster)
 {
     Cluster->ObservationSum = V3i(0, 0, 0);
     Cluster->ObservationCount = 0;
 }
 
 static void
-SeedCluster(kmeans_context *ClusterGroup, cluster *Cluster)
+SeedCluster(kmeans_context *Context, cluster *Cluster)
 {
     u32 RandomSampleX =
-        RandomU32Between(&ClusterGroup->Entropy, 0, (u32)(ClusterGroup->Bitmap.Width - 1));
+        RandomU32Between(&Context->Entropy, 0, (u32)(Context->Bitmap.Width - 1));
     u32 RandomSampleY =
-        RandomU32Between(&ClusterGroup->Entropy, 0, (u32)(ClusterGroup->Bitmap.Height - 1));
-    u32 RandomSample = *(u32 *)GetBitmapPtr(ClusterGroup->Bitmap, RandomSampleX, RandomSampleY);
+        RandomU32Between(&Context->Entropy, 0, (u32)(Context->Bitmap.Height - 1));
+    u32 RandomSample = *(u32 *)GetBitmapPtr(Context->Bitmap, RandomSampleX, RandomSampleY);
     
     Cluster->Centroid = UnpackRGBAToCIELAB(RandomSample);
 }
@@ -180,83 +179,167 @@ SeedCluster(kmeans_context *ClusterGroup, cluster *Cluster)
 static kmeans_context *
 AllocateClusterGroup(bitmap Bitmap, u32 Seed, int ClusterCount)
 {
-    kmeans_context *ClusterGroup = (kmeans_context *)malloc(sizeof(kmeans_context));
+    kmeans_context *Context = (kmeans_context *)malloc(sizeof(kmeans_context));
     
-    ClusterGroup->Entropy = SeedSeries(Seed);
-    ClusterGroup->Bitmap = Bitmap;
-    ClusterGroup->ClusterCount = ClusterCount;
-    ClusterGroup->Clusters = (cluster *)malloc(sizeof(cluster)*ClusterCount); 
-    ClusterGroup->TotalObservationCount = 0;
+    Context->Entropy = SeedSeries(Seed);
+    Context->Bitmap = Bitmap;
+    Context->ClusterCount = ClusterCount;
+    Context->Clusters = (cluster *)malloc(sizeof(cluster)*ClusterCount);
 
     for(int ClusterIndex = 0;
-        ClusterIndex < ClusterGroup->ClusterCount;
-        ++ClusterIndex)
+        ClusterIndex < Context->ClusterCount;
+        ClusterIndex++)
     {
-        cluster* Cluster = ClusterGroup->Clusters + ClusterIndex;
-        Cluster->TotalObservationCount = 0;
-        ClearClusterObservations(Cluster);
-        SeedCluster(ClusterGroup, Cluster);
+        cluster *Cluster = Context->Clusters + ClusterIndex;
+        SeedCluster(Context, Cluster);
+        ClearObservations(Cluster);
     }
     
-    return(ClusterGroup);
+    return(Context);
 }
 
 static u32
-AddObservation(kmeans_context *ClusterGroup, v3 C)
+AssignObservation(kmeans_context *Context, v3 Observation)
 {
     f32 ClosestDistSquared = F32Max;
-    cluster* ClosestCluster = 0;
+    cluster *ClosestCluster = 0;
+
     for(int ClusterIndex = 0;
-        ClusterIndex < ClusterGroup->ClusterCount;
+        ClusterIndex < Context->ClusterCount;
         ClusterIndex++)
     {
-        cluster* Cluster = (ClusterGroup->Clusters + ClusterIndex);
-        f32 d = LengthSquared(Cluster->Centroid - C);
+        cluster *Cluster = Context->Clusters + ClusterIndex;
+
+        f32 d = LengthSquared(Cluster->Centroid - Observation);
         if(d < ClosestDistSquared)
         {
             ClosestDistSquared = d;
             ClosestCluster = Cluster;
         }
     }
+
     Assert(ClosestCluster);
-    
-    ClosestCluster->ObservationSum += C;
+
+    ClosestCluster->ObservationSum += Observation;
     ClosestCluster->ObservationCount++;
-    ClosestCluster->TotalObservationCount++;
-    
-    ClusterGroup->TotalObservationCount++;
     
     // Returning the index of the closest cluster for our early out in the loop
     // where this function is called
-    u32 Result = (u32)(ClosestCluster - ClusterGroup->Clusters);
-    Assert(Result < (u32)ClusterGroup->ClusterCount);
+    u32 Result = (u32)(ClosestCluster - Context->Clusters);
+    Assert(Result < (u32)Context->ClusterCount);
     
     return(Result);
 }
 
 static void
-CommitObservations(kmeans_context *ClusterGroup)
+RecalculateCentroids(kmeans_context *Context)
 {
     for(int ClusterIndex = 0;
-        ClusterIndex < ClusterGroup->ClusterCount;
+        ClusterIndex < Context->ClusterCount;
         ClusterIndex++)
     {
-        cluster *Cluster = (ClusterGroup->Clusters + ClusterIndex);
-        
+        cluster *Cluster = Context->Clusters + ClusterIndex;
+
+        // @TODO: Why can this not be asserted?
+        // Assert(Cluster->ObservationCount);
         if(Cluster->ObservationCount)
         {
-            v3 NewCentroid = Cluster->Centroid + Cluster->ObservationSum;
-            f32 InvOnePastObservationCount = 1.0f / ((f32)Cluster->ObservationCount + 1.0f);
-            NewCentroid *= InvOnePastObservationCount;
-            Cluster->Centroid = NewCentroid;
+            Cluster->Centroid = Cluster->ObservationSum*(1.0f / Cluster->ObservationCount);
         }
-        else
+        ClearObservations(Cluster);
+    }
+}
+
+static void
+SortClustersByCentroid(kmeans_context *Context, sort_type SortType)
+{
+    v3 FocalColor = V3i(0, 0, 0);
+    switch(SortType)
+    {
+        case SortType_Red:
         {
-            SeedCluster(ClusterGroup, Cluster);
+            FocalColor = {53.23288178584245f,
+                          80.10930952982204f,
+                          67.22006831026425f};
+        } break;
+        
+        case SortType_Green:
+        {
+            FocalColor = {87.73703347354422f,
+                          -86.18463649762525f,
+                          83.18116474777854};
+        } break;
+        
+        case SortType_Blue:
+        {
+            FocalColor = {32.302586667249486,
+                          79.19666178930935,
+                          -107.86368104495168};
+        } break;
+    }
+
+    for(int Outer = 0;
+        Outer < Context->ClusterCount;
+        Outer++)
+    {
+        b32 Swapped = false;
+        
+        for(int Inner = 0;
+            Inner < (Context->ClusterCount - 1);
+            Inner++)
+        {
+            cluster *ClusterA = Context->Clusters + Inner;
+            cluster *ClusterB = Context->Clusters + Inner + 1;
+            
+            if(SortType == SortType_Weight)
+            {
+                if(ClusterB->ObservationCount > ClusterA->ObservationCount)
+                {
+                    cluster Swap = *ClusterA;
+                    *ClusterA = *ClusterB;
+                    *ClusterB = Swap;
+                    
+                    Swapped = true;
+                }
+            }
+            else if((SortType == SortType_Red) ||
+                    (SortType == SortType_Green) ||
+                    (SortType == SortType_Blue))
+            {
+                f32 DistSquaredToColorA = LengthSquared(FocalColor - ClusterA->Centroid);
+                f32 DistSquaredToColorB = LengthSquared(FocalColor - ClusterB->Centroid);
+                if(DistSquaredToColorB < DistSquaredToColorA)
+                {
+                    cluster Swap = *ClusterA;
+                    *ClusterA = *ClusterB;
+                    *ClusterB = Swap;
+                    
+                    Swapped = true;
+                }
+            }
         }
         
-        ClearClusterObservations(Cluster);
+        if(!Swapped)
+        {
+            break;
+        }
     }
+}
+
+static int
+ComputeTotalObservationCount(kmeans_context *Context)
+{
+    int Result = 0;
+
+    for(int ClusterIndex = 0;
+        ClusterIndex < Context->ClusterCount;
+        ClusterIndex++)
+    {
+        cluster *Cluster = Context->Clusters + ClusterIndex;
+        Result += Cluster->ObservationCount;
+    }
+
+    return(Result);
 }
 
 static void
@@ -314,147 +397,88 @@ main(int ArgCount, char **Args)
     if(ArgCount > 1)
     {
         palettize_config Config = ParseCommandLine(ArgCount, Args);
-        
+        Config.Seed = 171;
+
         // To improve performance, the source image is scaled such that its
         // largest dimension has a value of 100 pixels
-        bitmap Bitmap = LoadScaledBitmap(Config.SourcePath, 100.0f);
-        if(Bitmap.Memory)
+        bitmap Bitmap = LoadAndScaleBitmap(Config.SourcePath, 100.0f);
+        bitmap PrevClusterIndexBuffer = AllocateBitmap(Bitmap.Width, Bitmap.Height);
+        if(Bitmap.Memory && PrevClusterIndexBuffer.Memory)
         {
             kmeans_context *Context =
                 AllocateClusterGroup(Bitmap, Config.Seed, Config.ClusterCount);
             
-            bitmap LastClusterIndexBuffer = AllocateBitmap(Bitmap.Width, Bitmap.Height);
-            for(int Iteration = 0;
-                Iteration < Config.IterationCount;
-                Iteration++)
-            {
-                b32 IndexChangeOccurred = false;
+            int MinX = 0;
+            int MinY = 0;
+            int MaxX = Bitmap.Width;
+            int MaxY = Bitmap.Height;
 
-                int MinX = 0;
-                int MinY = 0;
-                int MaxX = Bitmap.Width;
-                int MaxY = Bitmap.Height;
-                
+            b32 IteratedOnce = false;
+            for(int Iteration = 0;
+                ;
+                Iteration++)
+            {   
+                b32 Changed = false;
+
                 u8 *Row = (u8 *)GetBitmapPtr(Bitmap, MinX, MinY);
+                u8 *PrevClusterIndexRow = (u8 *)GetBitmapPtr(PrevClusterIndexBuffer, MinX, MinY);
                 for(int Y = MinY;
                     Y < MaxY;
                     Y++)
                 {
                     u32 *TexelPtr = (u32 *)Row;
+                    u32 *PrevClusterIndexPtr = (u32 *)PrevClusterIndexRow;
                     for(int X = MinX;
                         X < MaxX;
                         X++)
                     {
-                        u32 Texel = *TexelPtr;
-                        
-                        v3 TexelV3 = UnpackRGBAToCIELAB(Texel);
-                        u32 ClusterIndex = AddObservation(Context,
-                                                          TexelV3);
+                        v3 TexelV3 = UnpackRGBAToCIELAB(*TexelPtr);
+                        u32 ClusterIndex = AssignObservation(Context, TexelV3);
 
-                        u32 *PrevClusterIndexPtr =
-                            (u32 *)GetBitmapPtr(LastClusterIndexBuffer, X, Y);
                         if(Iteration > 0)
                         {
-                            if(*PrevClusterIndexPtr != ClusterIndex)
+                            u32 PrevClusterIndex = *PrevClusterIndexPtr;
+                            if(ClusterIndex != PrevClusterIndex)
                             {
-                                IndexChangeOccurred = true;
+                                Changed = true;
                             }
                         }
                         *PrevClusterIndexPtr = ClusterIndex;
-                        
-                        TexelPtr++;
-                    }
-                    
-                    Row += Bitmap.Pitch;
-                }
-                
-                CommitObservations(Context);
-                if((Iteration > 0) &&
-                   !IndexChangeOccurred)
-                {
-                    break;
-                }
-            }
-      
-            v3 FocalColor = V3i(0, 0, 0);
-            switch(Config.SortType)
-            {
-                case SortType_Red:
-                {
-                    FocalColor = {53.23288178584245f,
-                                  80.10930952982204f,
-                                  67.22006831026425f};
-                } break;
-                
-                case SortType_Green:
-                {
-                    FocalColor = {87.73703347354422f,
-                                  -86.18463649762525f,
-                                  83.18116474777854};
-                } break;
-                
-                case SortType_Blue:
-                {
-                    FocalColor = {32.302586667249486,
-                                  79.19666178930935,
-                                  -107.86368104495168};
-                } break;
-            }
 
-            for(int Outer = 0;
-                Outer < Context->ClusterCount;
-                ++Outer)
-            {
-                b32 SwapOccurred = false;
-                
-                for(int Inner = 0;
-                    Inner < (Context->ClusterCount - 1);
-                    ++Inner)
-                {
-                    cluster *ClusterA = Context->Clusters + Inner;
-                    cluster *ClusterB = Context->Clusters + Inner + 1;
-                    
-                    if(Config.SortType == SortType_Weight)
+                        TexelPtr++;
+                        PrevClusterIndexPtr++;
+                    }
+
+                    Row += Bitmap.Pitch;
+                    PrevClusterIndexRow += PrevClusterIndexBuffer.Pitch;
+                }
+
+                if(Iteration == 0)
+                {   
+                    RecalculateCentroids(Context);
+                }             
+                else
+                {    
+                    if(Changed)
                     {
-                        Assert((FocalColor.x == 0.0f) && (FocalColor.y == 0.0f) && (FocalColor.z == 0.0f));
-                        
-                        if(ClusterB->TotalObservationCount > ClusterA->TotalObservationCount)
-                        {
-                            cluster Swap = *ClusterA;
-                            *ClusterA = *ClusterB;
-                            *ClusterB = Swap;
-                            
-                            SwapOccurred = true;
-                        }
+                        RecalculateCentroids(Context);
                     }
                     else
                     {
-                        Assert((Config.SortType == SortType_Red) || (Config.SortType == SortType_Green) || (Config.SortType == SortType_Blue));
-                        
-                        f32 DistSquaredToColorA = LengthSquared(FocalColor - ClusterA->Centroid);
-                        f32 DistSquaredToColorB = LengthSquared(FocalColor - ClusterB->Centroid);
-                        if(DistSquaredToColorB < DistSquaredToColorA)
-                        {
-                            cluster Swap = *ClusterA;
-                            *ClusterA = *ClusterB;
-                            *ClusterB = Swap;
-                            
-                            SwapOccurred = true;
-                        }
+                        break;
                     }
                 }
-                
-                if(!SwapOccurred)
-                {
-                    break;
-                }
             }
+      
+            SortClustersByCentroid(Context, Config.SortType);
     
             int PaletteWidth = 512;
             int PaletteHeight = 64;
             
             u8 *ScanLine = (u8 *)malloc(sizeof(u32)*PaletteWidth);
             
+            int TotalObservationCount = ComputeTotalObservationCount(Context);
+
             u32 *Row = (u32 *)ScanLine;
             for(int ClusterIndex = 0;
                 ClusterIndex < Context->ClusterCount;
@@ -462,21 +486,19 @@ main(int ArgCount, char **Args)
             {
                 cluster *Cluster = Context->Clusters + ClusterIndex;
 
-                f32 Weight = SafeRatio0((f32)Cluster->TotalObservationCount,
-                                        (f32)Context->TotalObservationCount);
+                f32 Weight = SafeRatio0((f32)Cluster->ObservationCount,
+                                        (f32)TotalObservationCount);
                 int ClusterPixelWidth = RoundToInt(Weight*PaletteWidth);
 
                 u32 CentroidColor = PackCIELABToRGBA(Cluster->Centroid);
                 while(ClusterPixelWidth--)
                 {
-                    // @Robustness: Add a counter of how many pixels we've
-                    // written out (and breaking out if we've gone too far) to
-                    // prevent heap corruption bugs
                     *Row++ = CentroidColor;
                 }
             }
    
             bitmap Palette = AllocateBitmap(PaletteWidth, PaletteHeight);
+
             u8 *DestRow = (u8 *)Palette.Memory;
             for(int Y = 0;
                 Y < PaletteHeight;
@@ -493,7 +515,7 @@ main(int ArgCount, char **Args)
                 
                 DestRow += Palette.Pitch;
             }
-
+            
             ExportBMP(Palette, Config.DestPath);
         }
         else
@@ -503,7 +525,7 @@ main(int ArgCount, char **Args)
     }
     else
     {
-        fprintf(stderr, "Usage: %s [source path] [cluster count] [seed] [sort type] [iteration count] [dest path]\n", Args[0]);
+        fprintf(stderr, "Usage: %s [source path] [cluster count] [seed] [sort type] [dest path]\n", Args[0]);
     }
     
     return(0);

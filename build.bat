@@ -9,8 +9,8 @@ set CompilerFlags=-D_CRT_SECURE_NO_WARNINGS %CompilerFlags%
 
 set LinkerFlags=-incremental:no -opt:ref
 
-if not exist bin mkdir bin
-pushd bin
+if not exist dist mkdir dist
+pushd dist
 
 cl %WarningsFlags% %CompilerFlags% ..\src\palettize.cpp /link %LinkerFlags%
 
