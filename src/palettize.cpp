@@ -392,6 +392,8 @@ main(int ArgCount, char **Args)
            PrevClusterIndexBuffer.Memory &&
            Palette.Memory)
         {
+            // @TODO: Place Context on the stack, and allocate its clusters
+            // outside of this block
             kmeans_context *Context =
                 AllocateClusterGroup(Bitmap, Config.Seed, Config.ClusterCount);
 
