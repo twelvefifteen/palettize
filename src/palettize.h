@@ -3,8 +3,11 @@
 #include <assert.h>
 #include <stdint.h>
 
-// @Production: Make Assert expand to nothing
+#if defined(PALETTIZE_DEBUG)
 #define Assert assert
+#else
+#define Assert
+#endif
 #define InvalidCodePath Assert(!"InvalidCodePath")
 #define InvalidDefaultCase default: {InvalidCodePath;} break
 
@@ -27,6 +30,7 @@ typedef float f32;
 #include "palettize_math.h"
 #include "palettize_random.h"
 #include "palettize_string.h"
+#include "palettize_time.h"
 
 enum sort_type
 {
@@ -49,9 +53,11 @@ struct palettize_config
 struct bitmap
 {
     void *Memory;
+
     int Width;
     int Height;
-    umm Pitch;
+    
+    int Pitch;
 };
 
 struct cluster

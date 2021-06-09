@@ -14,13 +14,11 @@ ParseCommandLine(int ArgCount, char **Args)
 {
     palettize_config Config = {};
 
-    // @Refactor: Abstract this into a helper
-    time_t Time = time(0);
-    tm *TM = gmtime(&Time);
-    u32 Seed = (TM->tm_year +
-                TM->tm_mon*TM->tm_mday +
-                TM->tm_hour*(u32)Cube((f32)TM->tm_min) +
-                (u32)Square((f32)TM->tm_sec)*0xFACADE);
+    timestamp NowUTC = GetTimestampUTC();
+    u32 Seed = (NowUTC.Year +
+                NowUTC.Month*NowUTC.Day +
+                NowUTC.Hour*(u32)Square((f32)NowUTC.Minute) +
+                (u32)Cube((f32)NowUTC.Second - 0.025f)*0xFACADE);
 
     Config.SourcePath = 0;
     Config.ClusterCount = 5;
@@ -68,8 +66,6 @@ ParseCommandLine(int ArgCount, char **Args)
 static bitmap
 LoadAndScaleBitmap(char *Path, f32 MaxResizedDim)
 {
-    // @TODO: This desperately needs to be refactored
-
     bitmap Result = {};
 
     int SourceWidth;
@@ -77,65 +73,50 @@ LoadAndScaleBitmap(char *Path, f32 MaxResizedDim)
     void *SourceMemory = stbi_load(Path, &SourceWidth, &SourceHeight, 0, sizeof(u32));
     if(SourceMemory)
     {
-        int MaxDim = Maximum(SourceWidth, SourceHeight);
-        if(MaxDim <= MaxResizedDim)
+        int SourcePitch = SourceWidth*sizeof(u32);
+
+        f32 ScaleFactor = MaxResizedDim / (f32)Maximum(SourceWidth, SourceHeight);
+        int ScaledWidth = RoundToInt(SourceWidth*ScaleFactor);
+        int ScaledHeight = RoundToInt(SourceHeight*ScaleFactor);
+
+        Result.Width = ScaledWidth;
+        Result.Height = ScaledHeight;
+        Result.Pitch = ScaledWidth*sizeof(u32);
+        Result.Memory = malloc(Result.Pitch*ScaledHeight);
+
+        u8 *Row = (u8 *)Result.Memory;
+        for(int Y = 0;
+            Y < ScaledHeight;
+            Y++)
         {
-            Result.Width = SourceWidth;
-            Result.Height = SourceHeight;
-            Result.Pitch = sizeof(u32)*SourceWidth;
-            Result.Memory = SourceMemory;
-        }
-        else
-        {            
-            f32 ScaleFactor = MaxResizedDim / (f32)MaxDim;
-            int ScaledWidth = RoundToInt(SourceWidth*ScaleFactor);
-            int ScaledHeight = RoundToInt(SourceHeight*ScaleFactor);
-
-            Result.Width = ScaledWidth;
-            Result.Height = ScaledHeight;
-            Result.Pitch = sizeof(u32)*ScaledWidth;
-            Result.Memory = malloc(sizeof(u32)*ScaledWidth*ScaledHeight);
-
-            // @TODO: Make the resize routine below preserve rotation and
-            // orientation
-
-            int MinX = 0;
-            int MinY = 0;
-            int MaxX = Result.Width;
-            int MaxY = Result.Height;
-
-            u8 *Row = (u8 *)GetBitmapPtr(Result, MinX, MinY);
-            for(int Y = MinY;
-                Y < MaxY;
-                Y++)
+            u32 *Texel = (u32 *)Row;
+            for(int X = 0;
+                X < ScaledWidth;
+                X++)
             {
-                u32 *TexelPtr = (u32 *)Row;
-                for(int X = MinX;
-                    X < MaxX;
-                    X++)
-                {
-                    f32 U = (f32)X / ((f32)MaxX - 1.0f);
-                    f32 V = (f32)Y / ((f32)MaxY - 1.0f);
-                    Assert((0.0f <= U) && (U <= 1.0f));
-                    Assert((0.0f <= V) && (V <= 1.0f));
-                    
-                    int SampleX = RoundToInt(U*((f32)SourceWidth - 1.0f));
-                    int SampleY = RoundToInt(V*((f32)SourceHeight - 1.0f));
-                    Assert((0 <= SampleX) && (SampleX < SourceWidth));
-                    Assert((0 <= SampleY) && (SampleY < SourceHeight));
-                    
-                    u32 Sample = *(u32 *)((u8 *)SourceMemory +
-                                          (sizeof(u32)*SampleX) +
-                                          (SampleY*sizeof(u32)*SourceWidth));
-                    
-                    *TexelPtr++ = Sample;
-                }
+                f32 U = (f32)X / ((f32)ScaledWidth - 1.0f);
+                f32 V = (f32)Y / ((f32)ScaledHeight - 1.0f);
+
+                Assert((0.0f <= U) && (U <= 1.0f));
+                Assert((0.0f <= V) && (V <= 1.0f));
+
+                int SampleX = RoundToInt(U*((f32)SourceWidth - 1.0f));
+                int SampleY = RoundToInt(V*((f32)SourceHeight - 1.0f));
+
+                Assert((0 <= SampleX) && (SampleX < SourceWidth));
+                Assert((0 <= SampleY) && (SampleY < SourceHeight));
                 
-                Row += Result.Pitch;
+                u32 Sample = *(u32 *)((u8 *)SourceMemory +
+                                      (SampleX*sizeof(u32)) +
+                                      (SampleY*SourcePitch));
+                
+                *Texel++ = Sample;
             }
-            
-            stbi_image_free(SourceMemory);
+
+            Row += Result.Pitch;
         }
+
+        stbi_image_free(SourceMemory);
     }
     else
     {
@@ -240,7 +221,6 @@ RecalculateCentroids(kmeans_context *Context)
     {
         cluster *Cluster = Context->Clusters + ClusterIndex;
 
-        // @TODO: Why can this not be asserted?
         // Assert(Cluster->ObservationCount);
         if(Cluster->ObservationCount)
         {
@@ -397,7 +377,6 @@ main(int ArgCount, char **Args)
     if(ArgCount > 1)
     {
         palettize_config Config = ParseCommandLine(ArgCount, Args);
-        Config.Seed = 171;
 
         // To improve performance, the source image is scaled such that its
         // largest dimension has a value of 100 pixels
@@ -407,7 +386,7 @@ main(int ArgCount, char **Args)
         {
             kmeans_context *Context =
                 AllocateClusterGroup(Bitmap, Config.Seed, Config.ClusterCount);
-            
+
             int MinX = 0;
             int MinY = 0;
             int MaxX = Bitmap.Width;
