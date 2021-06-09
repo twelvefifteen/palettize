@@ -381,8 +381,16 @@ main(int ArgCount, char **Args)
         // To improve performance, the source image is scaled such that its
         // largest dimension has a value of 100 pixels
         bitmap Bitmap = LoadAndScaleBitmap(Config.SourcePath, 100.0f);
+        
         bitmap PrevClusterIndexBuffer = AllocateBitmap(Bitmap.Width, Bitmap.Height);
-        if(Bitmap.Memory && PrevClusterIndexBuffer.Memory)
+
+        int PaletteWidth = 512;
+        int PaletteHeight = 64;
+        bitmap Palette = AllocateBitmap(PaletteWidth, PaletteHeight);
+
+        if(Bitmap.Memory &&
+           PrevClusterIndexBuffer.Memory &&
+           Palette.Memory)
         {
             kmeans_context *Context =
                 AllocateClusterGroup(Bitmap, Config.Seed, Config.ClusterCount);
@@ -450,14 +458,10 @@ main(int ArgCount, char **Args)
             }
       
             SortClustersByCentroid(Context, Config.SortType);
-    
-            int PaletteWidth = 512;
-            int PaletteHeight = 64;
             
             u8 *ScanLine = (u8 *)malloc(sizeof(u32)*PaletteWidth);
             
             int TotalObservationCount = ComputeTotalObservationCount(Context);
-
             u32 *Row = (u32 *)ScanLine;
             for(int ClusterIndex = 0;
                 ClusterIndex < Context->ClusterCount;
@@ -475,9 +479,7 @@ main(int ArgCount, char **Args)
                     *Row++ = CentroidColor;
                 }
             }
-   
-            bitmap Palette = AllocateBitmap(PaletteWidth, PaletteHeight);
-
+            
             u8 *DestRow = (u8 *)Palette.Memory;
             for(int Y = 0;
                 Y < PaletteHeight;
@@ -499,7 +501,7 @@ main(int ArgCount, char **Args)
         }
         else
         {
-            fprintf(stderr, "Error: Memory allocation failed for source bitmap\n");
+            fprintf(stderr, "Error: malloc failed at startup\n");
         }
     }
     else
