@@ -69,10 +69,6 @@ struct cluster
 };
 struct kmeans_context
 {
-    // @Refactor: Remove this to reduce coupling
-    random_series Entropy;
-    bitmap Bitmap;
-    
     int ClusterCount;
     cluster *Clusters;
 };

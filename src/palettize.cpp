@@ -146,37 +146,10 @@ ClearObservations(cluster *Cluster)
 }
 
 static void
-SeedCluster(kmeans_context *Context, cluster *Cluster)
+InitializeKMeansContext(kmeans_context *Context, int ClusterCount)
 {
-    u32 RandomSampleX =
-        RandomU32Between(&Context->Entropy, 0, (u32)(Context->Bitmap.Width - 1));
-    u32 RandomSampleY =
-        RandomU32Between(&Context->Entropy, 0, (u32)(Context->Bitmap.Height - 1));
-    u32 RandomSample = *(u32 *)GetBitmapPtr(Context->Bitmap, RandomSampleX, RandomSampleY);
-    
-    Cluster->Centroid = UnpackRGBAToCIELAB(RandomSample);
-}
-
-static kmeans_context *
-AllocateClusterGroup(bitmap Bitmap, u32 Seed, int ClusterCount)
-{
-    kmeans_context *Context = (kmeans_context *)malloc(sizeof(kmeans_context));
-    
-    Context->Entropy = SeedSeries(Seed);
-    Context->Bitmap = Bitmap;
     Context->ClusterCount = ClusterCount;
     Context->Clusters = (cluster *)malloc(sizeof(cluster)*ClusterCount);
-
-    for(int ClusterIndex = 0;
-        ClusterIndex < Context->ClusterCount;
-        ClusterIndex++)
-    {
-        cluster *Cluster = Context->Clusters + ClusterIndex;
-        SeedCluster(Context, Cluster);
-        ClearObservations(Cluster);
-    }
-    
-    return(Context);
 }
 
 static u32
@@ -378,8 +351,14 @@ main(int ArgCount, char **Args)
     {
         palettize_config Config = ParseCommandLine(ArgCount, Args);
 
+        kmeans_context Context_;
+        kmeans_context *Context = &Context_;
+        InitializeKMeansContext(Context, Config.ClusterCount);
+
         // To improve performance, the source image is scaled such that its
         // largest dimension has a value of 100 pixels
+        // @Refactor: Decouple scaling from loading so that small images are
+        // not resized to be bigger
         bitmap Bitmap = LoadAndScaleBitmap(Config.SourcePath, 100.0f);
         
         bitmap PrevClusterIndexBuffer = AllocateBitmap(Bitmap.Width, Bitmap.Height);
@@ -388,14 +367,26 @@ main(int ArgCount, char **Args)
         int PaletteHeight = 64;
         bitmap Palette = AllocateBitmap(PaletteWidth, PaletteHeight);
 
-        if(Bitmap.Memory &&
+        if(Context->Clusters &&
+           Bitmap.Memory &&
            PrevClusterIndexBuffer.Memory &&
            Palette.Memory)
         {
-            // @TODO: Place Context on the stack, and allocate its clusters
-            // outside of this block
-            kmeans_context *Context =
-                AllocateClusterGroup(Bitmap, Config.Seed, Config.ClusterCount);
+            random_series Entropy = SeedSeries(Config.Seed);
+            for(int ClusterIndex = 0;
+                ClusterIndex < Context->ClusterCount;
+                ClusterIndex++)
+            {
+                cluster *Cluster = Context->Clusters + ClusterIndex;
+                
+                ClearObservations(Cluster);
+
+                u32 SampleX = RandomU32Between(&Entropy, 0, (u32)(Bitmap.Width - 1));
+                u32 SampleY = RandomU32Between(&Entropy, 0, (u32)(Bitmap.Height - 1));
+                u32 Sample = *(u32 *)GetBitmapPtr(Bitmap, SampleX, SampleY);
+    
+                Cluster->Centroid = UnpackRGBAToCIELAB(Sample);
+            }                
 
             int MinX = 0;
             int MinY = 0;
