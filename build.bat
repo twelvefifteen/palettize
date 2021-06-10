@@ -22,4 +22,6 @@ echo -----------------
 echo Building release...
 cl %WarningsFlags% %CompilerFlags% -Fe%BaseName%_release_msvc.exe -Oi -O2 ..\src\palettize.cpp /link %LinkerFlags%
 
+del *.obj
+
 popd
